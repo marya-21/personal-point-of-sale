@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { formatRupiah } from '../utils/formatCurrency'
 import Modal from '../components/ui/Modal'
+import { useAuth } from '../hooks/useAuth'
 
-async function fetchTransactions({ dateFrom, dateTo }) {
+async function fetchTransactions({ dateFrom, dateTo, cashierId }) {
   let query = supabase
     .from('transactions')
     .select('*')
@@ -13,6 +14,7 @@ async function fetchTransactions({ dateFrom, dateTo }) {
 
   if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`)
   if (dateTo) query = query.lte('created_at', `${dateTo}T23:59:59`)
+  if (cashierId) query = query.eq('cashier_id', cashierId)
 
   const { data, error } = await query
   if (error) throw error
@@ -98,16 +100,22 @@ function TransactionHistory() {
   const [dateTo, setDateTo] = useState(today)
   const [selected, setSelected] = useState(null)
 
+  const { user, hasPermission } = useAuth()
+  const isAdmin = hasPermission('view_all_transactions')
+  const cashierId = isAdmin ? null : user?.id
+
   const { data: transactions, isLoading, isError, refetch } = useQuery({
-    queryKey: ['transactions', dateFrom, dateTo],
-    queryFn: () => fetchTransactions({ dateFrom, dateTo }),
+    queryKey: ['transactions', dateFrom, dateTo, cashierId],
+    queryFn: () => fetchTransactions({ dateFrom, dateTo, cashierId }),
   })
 
   const totalRevenue = transactions?.reduce((sum, t) => sum + t.total_price, 0) ?? 0
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Riwayat Transaksi</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">
+        {isAdmin ? 'Riwayat Transaksi' : 'Transaksi Saya'}
+      </h1>
 
       {/* Filter tanggal */}
       <div className="flex flex-wrap items-end gap-3 mb-6">

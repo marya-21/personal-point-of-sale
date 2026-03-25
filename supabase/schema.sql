@@ -16,11 +16,15 @@ CREATE TABLE IF NOT EXISTS products (
 -- 2. Tabel Transaksi (Header)
 CREATE TABLE IF NOT EXISTS transactions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cashier_id    UUID,  -- referensi ke tabel users (nullable untuk data lama)
   total_price   INTEGER NOT NULL,
   cash_amount   INTEGER NOT NULL,
   change_amount INTEGER NOT NULL,
   created_at    TIMESTAMPTZ DEFAULT now()
 );
+
+-- Jika tabel transactions sudah ada sebelumnya, jalankan ini untuk menambah kolom:
+-- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cashier_id UUID;
 
 -- 3. Tabel Item Transaksi (Detail)
 CREATE TABLE IF NOT EXISTS transaction_items (

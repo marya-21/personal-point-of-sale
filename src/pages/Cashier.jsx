@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../services/supabase";
 import useCartStore from "../store/useCartStore";
+import { useAuth } from "../hooks/useAuth";
 import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
@@ -20,7 +21,7 @@ async function fetchProducts() {
 }
 
 // Proses checkout: insert transaksi + items + kurangi stok
-async function processCheckout({ items, total, cashAmount }) {
+async function processCheckout({ items, total, cashAmount, cashierId }) {
   const change = cashAmount - total;
 
   // 1. Insert header transaksi
@@ -30,6 +31,7 @@ async function processCheckout({ items, total, cashAmount }) {
       total_price: total,
       cash_amount: cashAmount,
       change_amount: change,
+      cashier_id: cashierId ?? null,
     })
     .select()
     .single();
@@ -64,6 +66,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
   const queryClient = useQueryClient();
   const { items, clearCart } = useCartStore();
+  const { user } = useAuth();
 
   const mutation = useMutation({
     mutationFn: processCheckout,
@@ -81,7 +84,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isValid) return;
-    mutation.mutate({ items, total, cashAmount: cash });
+    mutation.mutate({ items, total, cashAmount: cash, cashierId: user?.id });
   };
 
   const handleClose = () => {
