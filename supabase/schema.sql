@@ -3,6 +3,157 @@
 -- Dashboard -> SQL Editor -> New Query -> Paste -> Run
 -- =============================================
 
+-- 0. Extension (wajib untuk password hashing)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- =============================================
+-- AUTH TABLES
+-- =============================================
+
+-- 0a. Tabel Roles
+CREATE TABLE IF NOT EXISTS roles (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 0b. Tabel Permissions
+CREATE TABLE IF NOT EXISTS permissions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT UNIQUE NOT NULL,
+  description TEXT,
+  resource    TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- 0c. Tabel Junction Role <-> Permission
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_id       UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  PRIMARY KEY (role_id, permission_id)
+);
+
+-- 0d. Tabel Users
+CREATE TABLE IF NOT EXISTS users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name     TEXT NOT NULL,
+  role_id       UUID REFERENCES roles(id),
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- =============================================
+-- SEED DATA: Roles
+-- =============================================
+INSERT INTO roles (name) VALUES
+  ('admin'),
+  ('kasir')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================
+-- SEED DATA: Permissions
+-- =============================================
+INSERT INTO permissions (name, description, resource) VALUES
+  ('create_transaction',    'Buat transaksi baru',           'transactions'),
+  ('view_own_transactions', 'Lihat transaksi sendiri',        'transactions'),
+  ('view_all_transactions', 'Lihat semua transaksi',          'transactions'),
+  ('void_transaction',      'Void transaksi',                 'transactions'),
+  ('delete_transaction',    'Hapus transaksi',                'transactions'),
+  ('view_products',         'Lihat daftar produk',            'products'),
+  ('create_product',        'Tambah produk baru',             'products'),
+  ('edit_product',          'Edit detail dan harga produk',   'products'),
+  ('edit_product_price',    'Edit harga produk',              'products'),
+  ('delete_product',        'Hapus produk',                   'products'),
+  ('view_stock',            'Lihat level stok',               'stock'),
+  ('adjust_stock',          'Adjust stok manual',             'stock'),
+  ('view_users',            'Lihat daftar user',              'users'),
+  ('create_user',           'Tambah user baru',               'users'),
+  ('edit_user',             'Edit data user',                 'users'),
+  ('delete_user',           'Hapus user',                     'users'),
+  ('manage_roles',          'Kelola role dan permission',     'roles'),
+  ('view_audit_log',        'Lihat audit log',                'audit')
+ON CONFLICT (name) DO NOTHING;
+
+-- =============================================
+-- SEED DATA: Role Permissions
+-- =============================================
+
+-- Admin: semua permission
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r, permissions p
+WHERE r.name = 'admin'
+ON CONFLICT DO NOTHING;
+
+-- Kasir: hanya transaksi + lihat produk + lihat stok
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r, permissions p
+WHERE r.name = 'kasir'
+  AND p.name IN (
+    'create_transaction',
+    'view_own_transactions',
+    'view_products',
+    'view_stock'
+  )
+ON CONFLICT DO NOTHING;
+
+-- =============================================
+-- STORED FUNCTION: verify_login
+-- =============================================
+CREATE OR REPLACE FUNCTION verify_login(p_email TEXT, p_password TEXT)
+RETURNS TABLE (
+  user_id     UUID,
+  email       TEXT,
+  full_name   TEXT,
+  role_name   TEXT,
+  permissions TEXT[]
+) AS $$
+DECLARE
+  v_user users%ROWTYPE;
+BEGIN
+  SELECT * INTO v_user
+  FROM users
+  WHERE users.email = p_email AND is_active = true;
+
+  IF NOT FOUND THEN RETURN; END IF;
+
+  IF crypt(p_password, v_user.password_hash) <> v_user.password_hash THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    v_user.id,
+    v_user.email,
+    v_user.full_name,
+    r.name AS role_name,
+    ARRAY(
+      SELECT p.name::TEXT
+      FROM permissions p
+      INNER JOIN role_permissions rp ON p.id = rp.permission_id
+      WHERE rp.role_id = v_user.role_id
+    ) AS permissions
+  FROM roles r
+  WHERE r.id = v_user.role_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================
+-- CONTOH: Membuat user admin
+-- =============================================
+-- INSERT INTO users (email, password_hash, full_name, role_id)
+-- VALUES (
+--   'admin@toko.com',
+--   crypt('password123', gen_salt('bf')),
+--   'Admin Toko',
+--   (SELECT id FROM roles WHERE name = 'admin')
+-- );
+
+-- =============================================
+-- BUSINESS TABLES
+-- =============================================
+
 -- 1. Tabel Produk
 CREATE TABLE IF NOT EXISTS products (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../services/supabase";
-import { formatRupiah } from "../utils/formatCurrency";
+import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Modal from "../components/ui/Modal";
+import { usePermission } from "../hooks/useAuth";
 
 async function fetchProducts() {
   const { data, error } = await supabase
@@ -56,6 +57,11 @@ function ProductForm({ initialData, onSubmit, isPending, onCancel }) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handlePriceChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    setForm((prev) => ({ ...prev, price_sell: raw }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
@@ -86,11 +92,12 @@ function ProductForm({ initialData, onSubmit, isPending, onCancel }) {
       <Input
         label="Harga Jual (Rp)"
         name="price_sell"
-        type="number"
-        value={form.price_sell}
-        onChange={handleChange}
+        type="text"
+        inputMode="numeric"
+        value={form.price_sell === "" ? "" : formatNumber(form.price_sell)}
+        onChange={handlePriceChange}
         required
-        placeholder="Contoh: 5000"
+        placeholder="Contoh: 5.000"
       />
       <Input
         label="Stok"
@@ -301,6 +308,11 @@ function Inventory() {
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
 
+  const canCreate = usePermission("create_product");
+  const canEdit = usePermission("edit_product");
+  const canDelete = usePermission("delete_product");
+  const canManage = canEdit || canDelete;
+
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
@@ -420,7 +432,7 @@ function Inventory() {
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Stok
                       </th>
-                      <th className="py-3 px-4" />
+                      {canManage && <th className="py-3 px-4" />}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -454,25 +466,31 @@ function Inventory() {
                             {product.stock}
                           </span>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              variant="ghost"
-                              className="text-sm py-1 px-3"
-                              onClick={() => handleEdit(product)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="danger"
-                              className="text-sm py-1 px-3"
-                              onClick={() => handleDelete(product)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              Hapus
-                            </Button>
-                          </div>
-                        </td>
+                        {canManage && (
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2 justify-end">
+                              {canEdit && (
+                                <Button
+                                  variant="ghost"
+                                  className="text-sm py-1 px-3"
+                                  onClick={() => handleEdit(product)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  variant="danger"
+                                  className="text-sm py-1 px-3"
+                                  onClick={() => handleDelete(product)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  Hapus
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -483,9 +501,11 @@ function Inventory() {
 
           {/* Right: sidebar panels */}
           <div className="w-64 shrink-0 space-y-4">
-            <Button variant="primary" className="w-full" onClick={handleAdd}>
-              + Tambah Produk
-            </Button>
+            {canCreate && (
+              <Button variant="primary" className="w-full" onClick={handleAdd}>
+                + Tambah Produk
+              </Button>
+            )}
             <TopSellingPanel items={topSelling} />
             <StockAlertPanel outOfStock={outOfStock} lowStock={lowStock} />
           </div>
