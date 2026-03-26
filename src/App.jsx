@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './auth/AuthContext'
@@ -24,8 +25,10 @@ function NavBar() {
   if (!isAuthenticated) return null
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
+    logout(() => {
+      queryClient.clear()
+      navigate('/login')
+    })
   }
 
   return (
@@ -95,6 +98,15 @@ function NavBar() {
 
 function AppShell() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  // Redirect ke login jika session expired (auto-logout karena inaktivitas)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      queryClient.clear()
+      navigate('/login', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   return (
     <>
