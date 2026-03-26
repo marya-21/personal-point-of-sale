@@ -31,6 +31,11 @@ Action: Jika ditemukan, data produk dikirim ke Zustand Store untuk ditambahkan k
 
 Checkout: Menggunakan TanStack Mutation untuk mengirim data transaksi ke tabel transactions dan transaction_items, serta mengurangi stok produk secara atomik.
 
+Session & Auto-Logout:
+- Custom auth via localStorage (pos_session + pos_last_activity), bukan Supabase Auth.
+- Auto-logout setelah 30 menit tidak ada aktivitas; dicek tiap 1 menit via setInterval.
+- Logout (manual/otomatis) hapus localStorage dan panggil queryClient.clear().
+
 4. Database Schema (Supabase)
 SQL
 -- Produk
@@ -46,6 +51,8 @@ supabase/
 └── schema.sql                # SQL setup tabel & function — jalankan di Supabase SQL Editor
 src/
 ├── components/
+    ├── auth/
+        |__ ProtectRoute.jsx
 │   ├── pos/
 │   │   ├── Cart.jsx          # Keranjang belanja dengan +/-/hapus item
 │   │   └── ScannerListener.jsx # Listener scan → cari di cache TanStack Query
