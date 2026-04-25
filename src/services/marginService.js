@@ -18,6 +18,7 @@ export const createOrUpdateProductWithAudit = async (productData, userId) => {
         p_user_id: userId,
         p_id: productData.id || null,
         p_reason: productData.reason || null,
+        p_stock: productData.stock,
       },
     );
 

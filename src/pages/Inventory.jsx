@@ -239,13 +239,21 @@ function Inventory() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    createMutation.reset();
+    updateMutation.reset();
   };
 
   const handleSubmit = (data) => {
     if (editingProduct?.id) {
-      updateMutation.mutate({ ...data, id: editingProduct.id, userId: user?.id });
+      updateMutation.mutate(
+        { ...data, id: editingProduct.id, userId: user?.id },
+        { onSuccess: handleCloseModal }
+      );
     } else {
-      createMutation.mutate({ ...data, userId: user?.id });
+      createMutation.mutate(
+        { ...data, userId: user?.id },
+        { onSuccess: handleCloseModal }
+      );
     }
   };
 
@@ -450,16 +458,6 @@ function Inventory() {
           onCancel={handleCloseModal}
         />
         {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
-        {createMutation.isSuccess && !editingProduct && (
-          <p className="text-sm text-green-600 mt-2">
-            Produk berhasil ditambahkan!
-          </p>
-        )}
-        {updateMutation.isSuccess && editingProduct && (
-          <p className="text-sm text-green-600 mt-2">
-            Produk berhasil diperbarui!
-          </p>
-        )}
       </Modal>
     </div>
   );
