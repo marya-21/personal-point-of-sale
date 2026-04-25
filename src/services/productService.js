@@ -73,13 +73,10 @@ export const useCreateProduct = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (productData) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+    mutationFn: async ({ userId, ...productData }) => {
+      if (!userId) throw new Error("User not authenticated");
 
-      const result = await createOrUpdateProductWithAudit(productData, user.id);
+      const result = await createOrUpdateProductWithAudit(productData, userId);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to create product");
@@ -100,13 +97,10 @@ export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (productData) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+    mutationFn: async ({ userId, ...productData }) => {
+      if (!userId) throw new Error("User not authenticated");
 
-      const result = await createOrUpdateProductWithAudit(productData, user.id);
+      const result = await createOrUpdateProductWithAudit(productData, userId);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to update product");

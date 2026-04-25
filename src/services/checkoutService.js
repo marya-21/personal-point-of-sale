@@ -1,10 +1,10 @@
 // src/services/checkoutService.js
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import supabase from "./supabase";
 import { processCheckoutWithMargins } from "./marginService";
+import { supabase } from "./supabase";
 
 /**
- * Checkout mutation dengan margin calculation
+ * Checkout mutation with margin calculation
  */
 export const useCheckout = () => {
   const queryClient = useQueryClient();

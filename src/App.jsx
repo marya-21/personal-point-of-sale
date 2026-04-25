@@ -15,7 +15,6 @@ import Cashier from "./pages/Cashier";
 import Inventory from "./pages/Inventory";
 import TransactionHistory from "./pages/TransactionHistory";
 import Login from "./pages/Auth/Login";
-import { useCreateProduct, useProducts } from "./services/productService";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,40 +164,12 @@ function AppShell() {
   );
 }
 
-function TestComponent() {
-  const { data: products, isLoading } = useProducts();
-  const createProduct = useCreateProduct();
-
-  const handleCreate = async () => {
-    createProduct.mutate({
-      barcode: "123456",
-      name: "Test Product",
-      price_cost: 10000,
-      price_sell: 15000,
-    });
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <button onClick={handleCreate}>Create Product</button>
-      {products?.map((p) => (
-        <div key={p.id}>
-          {p.name} - Margin: {p.margin_rp}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          {/* <AppShell /> */}
-          <TestComponent />
+          <AppShell />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

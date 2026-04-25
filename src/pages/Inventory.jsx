@@ -1,20 +1,18 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../services/supabase";
-import { formatRupiah, formatNumber } from "../utils/formatCurrency";
+import {
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useProducts,
+} from "../services/productService";
+import { formatRupiah } from "../utils/formatCurrency";
+import ProductForm from "../components/inventory/ProductForm";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Modal from "../components/ui/Modal";
-import { usePermission } from "../hooks/useAuth";
-
-async function fetchProducts() {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("name", { ascending: true });
-  if (error) throw error;
-  return data;
-}
+import { useAuth, usePermission } from "../hooks/useAuth";
 
 async function fetchTopSelling() {
   const { data, error } = await supabase
@@ -32,103 +30,7 @@ async function fetchTopSelling() {
   return Object.values(totals).sort((a, b) => b.qty - a.qty);
 }
 
-async function upsertProduct(product) {
-  const { data, error } = await supabase
-    .from("products")
-    .upsert(product)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-async function deleteProduct(id) {
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) throw error;
-}
-
-const emptyForm = { barcode: "", name: "", price_sell: "", stock: "" };
 const LOW_STOCK_THRESHOLD = 10;
-
-function ProductForm({ initialData, onSubmit, isPending, onCancel }) {
-  const [form, setForm] = useState(initialData || emptyForm);
-
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handlePriceChange = (e) => {
-    const raw = e.target.value.replace(/[^0-9]/g, "");
-    setForm((prev) => ({ ...prev, price_sell: raw }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      ...form,
-      price_sell: parseInt(form.price_sell),
-      stock: parseInt(form.stock),
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <Input
-        label="Barcode"
-        name="barcode"
-        value={form.barcode}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: 8991234567890"
-      />
-      <Input
-        label="Nama Produk"
-        name="name"
-        value={form.name}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: Aqua 600ml"
-      />
-      <Input
-        label="Harga Jual (Rp)"
-        name="price_sell"
-        type="text"
-        inputMode="numeric"
-        value={form.price_sell === "" ? "" : formatNumber(form.price_sell)}
-        onChange={handlePriceChange}
-        required
-        placeholder="Contoh: 5.000"
-      />
-      <Input
-        label="Stok"
-        name="stock"
-        type="number"
-        value={form.stock}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: 100"
-      />
-      <div className="flex gap-3 pt-2">
-        <Button
-          type="button"
-          variant="secondary"
-          className="flex-1"
-          onClick={onCancel}
-        >
-          Batal
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          className="flex-1"
-          disabled={isPending}
-        >
-          {isPending ? "Menyimpan..." : "Simpan"}
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 function TopSellingPanel({ items }) {
   const [showAll, setShowAll] = useState(false);
@@ -198,7 +100,6 @@ function TopSellingPanel({ items }) {
 function StockAlertPanel({ outOfStock, lowStock }) {
   const [showAll, setShowAll] = useState(false);
 
-  // ordered: habis first, then will run out
   const combined = [
     ...outOfStock.map((p) => ({ ...p, _status: "habis" })),
     ...lowStock.map((p) => ({ ...p, _status: "mau_habis" })),
@@ -306,36 +207,23 @@ function Inventory() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [search, setSearch] = useState("");
-  const queryClient = useQueryClient();
 
+  const { user } = useAuth();
   const canCreate = usePermission("create_product");
   const canEdit = usePermission("edit_product");
   const canDelete = usePermission("delete_product");
   const canManage = canEdit || canDelete;
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
-  });
+  // Use service hooks
+  const { data: products = [], isLoading } = useProducts();
+  const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct();
+  const deleteMutation = useDeleteProduct();
 
   const { data: topSelling = [] } = useQuery({
     queryKey: ["top-selling"],
     queryFn: fetchTopSelling,
     staleTime: 5 * 60 * 1000,
-  });
-
-  const upsertMutation = useMutation({
-    mutationFn: upsertProduct,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      setShowModal(false);
-      setEditingProduct(null);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteProduct,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
   });
 
   const handleEdit = (product) => {
@@ -353,6 +241,14 @@ function Inventory() {
     setEditingProduct(null);
   };
 
+  const handleSubmit = (data) => {
+    if (editingProduct?.id) {
+      updateMutation.mutate({ ...data, id: editingProduct.id, userId: user?.id });
+    } else {
+      createMutation.mutate({ ...data, userId: user?.id });
+    }
+  };
+
   const handleDelete = (product) => {
     if (window.confirm(`Hapus produk "${product.name}"?`)) {
       deleteMutation.mutate(product.id);
@@ -365,21 +261,18 @@ function Inventory() {
       p.barcode.includes(search),
   );
 
-  const outOfStock = useMemo(
-    () =>
-      products
-        .filter((p) => p.stock === 0)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [products],
-  );
+  const outOfStock = products
+    .filter((p) => p.stock === 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
-  const lowStock = useMemo(
-    () =>
-      products
-        .filter((p) => p.stock > 0 && p.stock < LOW_STOCK_THRESHOLD)
-        .sort((a, b) => a.stock - b.stock),
-    [products],
-  );
+  const lowStock = products
+    .filter((p) => p.stock > 0 && p.stock < LOW_STOCK_THRESHOLD)
+    .sort((a, b) => a.stock - b.stock);
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isError = createMutation.isError || updateMutation.isError;
+  const errorMessage =
+    createMutation.error?.message || updateMutation.error?.message;
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -427,7 +320,13 @@ function Inventory() {
                         Barcode
                       </th>
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Harga Jual
+                        H. Pokok
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        H. Jual
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Margin
                       </th>
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Stok
@@ -450,8 +349,35 @@ function Inventory() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span className="text-sm font-semibold text-gray-900">
+                            {formatRupiah(product.price_cost || 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900">
                             {formatRupiah(product.price_sell)}
                           </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="text-right">
+                            <span
+                              className={`text-sm font-semibold ${
+                                product.margin_rp < 0
+                                  ? "text-red-600"
+                                  : "text-green-600"
+                              }`}
+                            >
+                              {formatRupiah(product.margin_rp)}
+                            </span>
+                            <p
+                              className={`text-xs ${
+                                product.margin_rp < 0
+                                  ? "text-red-500"
+                                  : "text-green-500"
+                              }`}
+                            >
+                              {product.margin_percent}%
+                            </p>
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <span
@@ -519,13 +445,19 @@ function Inventory() {
       >
         <ProductForm
           initialData={editingProduct}
-          onSubmit={(data) => upsertMutation.mutate(data)}
-          isPending={upsertMutation.isPending}
+          onSubmit={handleSubmit}
+          isPending={isPending}
           onCancel={handleCloseModal}
         />
-        {upsertMutation.isError && (
-          <p className="text-sm text-red-600 mt-2">
-            Gagal menyimpan. Periksa apakah barcode sudah digunakan.
+        {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
+        {createMutation.isSuccess && !editingProduct && (
+          <p className="text-sm text-green-600 mt-2">
+            Produk berhasil ditambahkan!
+          </p>
+        )}
+        {updateMutation.isSuccess && editingProduct && (
+          <p className="text-sm text-green-600 mt-2">
+            Produk berhasil diperbarui!
           </p>
         )}
       </Modal>

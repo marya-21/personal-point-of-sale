@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "../services/supabase";
+import { useCheckout } from "../services/checkoutService";
+import { useProducts } from "../services/productService";
 import useCartStore from "../store/useCartStore";
-import { useAuth } from "../hooks/useAuth";
 import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
@@ -10,72 +9,10 @@ import Modal from "../components/ui/Modal";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 
-// Fetch semua produk sekali, disimpan di cache TanStack Query
-async function fetchProducts() {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .gt("stock", -1);
-  if (error) throw error;
-  return data;
-}
-
-// Proses checkout: insert transaksi + items + kurangi stok
-async function processCheckout({ items, total, cashAmount, cashierId }) {
-  const change = cashAmount - total;
-
-  // 1. Insert header transaksi
-  const { data: transaction, error: txError } = await supabase
-    .from("transactions")
-    .insert({
-      total_price: total,
-      cash_amount: cashAmount,
-      change_amount: change,
-      cashier_id: cashierId ?? null,
-    })
-    .select()
-    .single();
-  if (txError) throw txError;
-
-  // 2. Insert item-item transaksi
-  const transactionItems = items.map((item) => ({
-    transaction_id: transaction.id,
-    product_id: item.id,
-    qty: item.qty,
-    subtotal: item.price_sell * item.qty,
-  }));
-  const { error: itemsError } = await supabase
-    .from("transaction_items")
-    .insert(transactionItems);
-  if (itemsError) throw itemsError;
-
-  // 3. Kurangi stok setiap produk
-  await Promise.all(
-    items.map((item) =>
-      supabase.rpc("decrement_stock", {
-        product_id: item.id,
-        amount: item.qty,
-      }),
-    ),
-  );
-
-  return { ...transaction, change };
-}
-
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
-  const queryClient = useQueryClient();
   const { items, clearCart } = useCartStore();
-  const { user } = useAuth();
-
-  const mutation = useMutation({
-    mutationFn: processCheckout,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      clearCart();
-      onSuccess(data);
-    },
-  });
+  const checkoutMutation = useCheckout();
 
   const cash = parseInt(cashAmount) || 0;
   const change = cash - total;
@@ -84,12 +21,28 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isValid) return;
-    mutation.mutate({ items, total, cashAmount: cash, cashierId: user?.id });
+
+    checkoutMutation.mutate(
+      {
+        items: items.map((item) => ({
+          product_id: item.id,
+          qty: item.qty,
+        })),
+        cash_amount: cash,
+        payment_method: "cash",
+      },
+      {
+        onSuccess: (data) => {
+          clearCart();
+          onSuccess(data);
+        },
+      },
+    );
   };
 
   const handleClose = () => {
     setCashAmount("");
-    mutation.reset();
+    checkoutMutation.reset();
     onClose();
   };
 
@@ -103,7 +56,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Pembayaran">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">Total Belanja</span>
             <span className="font-bold text-lg">{formatRupiah(total)}</span>
@@ -137,9 +90,10 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
           </div>
         )}
 
-        {mutation.isError && (
+        {checkoutMutation.isError && (
           <p className="text-sm text-red-600">
-            Gagal memproses transaksi. Coba lagi.
+            {checkoutMutation.error?.message ||
+              "Gagal memproses transaksi. Coba lagi."}
           </p>
         )}
 
@@ -156,9 +110,9 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
             type="submit"
             variant="success"
             className="flex-1"
-            disabled={!isValid || mutation.isPending}
+            disabled={!isValid || checkoutMutation.isPending}
           >
-            {mutation.isPending ? "Memproses..." : "Konfirmasi"}
+            {checkoutMutation.isPending ? "Memproses..." : "Konfirmasi"}
           </Button>
         </div>
       </form>
@@ -185,12 +139,42 @@ function SuccessModal({ isOpen, data, onClose }) {
             />
           </svg>
         </div>
+
+        {data && (
+          <div className="space-y-3 bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Total Penjualan</span>
+              <span className="font-semibold">
+                {formatRupiah(data.total_price)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Total Modal</span>
+              <span className="font-semibold">
+                {formatRupiah(data.total_cost)}
+              </span>
+            </div>
+            <div className="border-t border-gray-200 pt-3 flex justify-between">
+              <span className="text-sm font-semibold text-green-700">
+                Margin
+              </span>
+              <div className="text-right">
+                <p className="text-lg font-bold text-green-600">
+                  {formatRupiah(data.total_margin)}
+                </p>
+                <p className="text-xs text-green-600">{data.margin_percent}%</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div>
           <p className="text-gray-600 text-sm">Kembalian</p>
           <p className="text-3xl font-bold text-green-600">
-            {data ? formatRupiah(data.change) : ""}
+            {data ? formatRupiah(data.change_amount) : ""}
           </p>
         </div>
+
         <Button variant="primary" className="w-full" onClick={onClose}>
           Transaksi Baru
         </Button>
@@ -206,16 +190,8 @@ function Cashier() {
   const [searchQuery, setSearchQuery] = useState("");
   const { getTotal, addItem } = useCartStore();
 
-  // Fetch produk sekali, di-cache oleh TanStack Query
-  const {
-    isLoading,
-    isError,
-    data: products,
-  } = useQuery({
-    queryKey: ["products"],
-    queryFn: fetchProducts,
-    staleTime: 5 * 60 * 1000, // 5 menit
-  });
+  // Use service hook untuk products
+  const { data: products = [], isLoading, isError } = useProducts();
 
   const filtered =
     products?.filter((p) =>
@@ -260,14 +236,14 @@ function Cashier() {
     <div className="flex h-screen bg-gray-100">
       <ScannerListener onNotFound={handleNotFound} />
 
-      {/* Area notifikasi barcode tidak ditemukan */}
+      {/* Notification barcode tidak ditemukan */}
       {notFoundBarcode && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg text-sm">
           Barcode <strong>{notFoundBarcode}</strong> tidak ditemukan
         </div>
       )}
 
-      {/* Panel kiri: Pencarian produk */}
+      {/* Left Panel: Product Search */}
       <div className="flex-1 flex flex-col p-6 min-w-0">
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Kasir POS</h1>
@@ -317,7 +293,7 @@ function Cashier() {
         </div>
       </div>
 
-      {/* Panel kanan: Cart */}
+      {/* Right Panel: Cart */}
       <div className="w-96 bg-white shadow-lg flex flex-col p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Keranjang Belanja
