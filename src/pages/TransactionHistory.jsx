@@ -1,28 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../services/supabase";
 import { getTransactionWithMargins } from "../services/marginService";
 import { formatRupiah } from "../utils/formatCurrency";
 import Modal from "../components/ui/Modal";
 import { useAuth } from "../hooks/useAuth";
+import { useTransactions } from "../services/transactionService";
 
-async function fetchTransactions({ dateFrom, dateTo, cashierId }) {
-  let query = supabase
-    .from("transactions")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
-  if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  if (cashierId) query = query.eq("created_by", cashierId);
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
-}
-
-function DetailModal({ transaction, onClose }) {
+function DetailModal({ transaction, onClose, isAdmin }) {
   const {
     data: detail,
     isLoading,
@@ -88,23 +72,28 @@ function DetailModal({ transaction, onClose }) {
                 {formatRupiah(detail.data.total_price)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Total Modal</span>
-              <span className="font-semibold">
-                {formatRupiah(detail.data.total_cost)}
-              </span>
-            </div>
-            <div className="bg-green-50 rounded p-2 flex justify-between">
-              <span className="font-semibold text-green-700">Margin</span>
-              <div className="text-right">
-                <p className="font-bold text-green-700">
-                  {formatRupiah(detail.data.total_margin)}
-                </p>
-                <p className="text-xs text-green-600">
-                  {detail.data.margin_percent}%
-                </p>
-              </div>
-            </div>
+            {isAdmin && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Modal</span>
+                  <span className="font-semibold">
+                    {formatRupiah(detail.data.total_cost)}
+                  </span>
+                </div>
+                <div className="bg-green-50 rounded p-2 flex justify-between">
+                  <span className="font-semibold text-green-700">Margin</span>
+                  <div className="text-right">
+                    <p className="font-bold text-green-700">
+                      {formatRupiah(detail.data.total_margin)}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      {detail.data.margin_percent}%
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="flex justify-between border-t border-gray-200 pt-2">
               <span>Tunai</span>
               <span>{formatRupiah(detail.data.cash_amount)}</span>
@@ -135,10 +124,7 @@ function TransactionHistory() {
     isLoading,
     isError,
     refetch,
-  } = useQuery({
-    queryKey: ["transactions", dateFrom, dateTo, cashierId],
-    queryFn: () => fetchTransactions({ dateFrom, dateTo, cashierId }),
-  });
+  } = useTransactions(dateFrom, dateTo, cashierId);
 
   const totalRevenue =
     transactions?.reduce((sum, t) => sum + t.total_price, 0) ?? 0;
@@ -206,13 +192,16 @@ function TransactionHistory() {
               {formatRupiah(totalCost)}
             </p>
           </div>
-          <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
-            <p className="text-xs text-green-600 font-medium">Total Margin</p>
-            <p className="text-2xl font-bold text-green-700 mt-1">
-              {formatRupiah(totalMargin)}
-            </p>
-            <p className="text-xs text-green-600 mt-1">{marginPercent}%</p>
-          </div>
+          {isAdmin && (
+            <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
+              <p className="text-xs text-green-600 font-medium">Total Margin</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">
+                {formatRupiah(totalMargin)}
+              </p>
+
+              <p className="text-xs text-green-600 mt-1">{marginPercent}%</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -261,14 +250,17 @@ function TransactionHistory() {
                         Kembalian {formatRupiah(tx.change_amount)}
                       </p>
                     </div>
-                    <div className="bg-green-50 rounded px-2 py-1">
-                      <p className="text-xs font-semibold text-green-700">
-                        {formatRupiah(tx.total_margin || 0)}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        {tx.margin_percent || 0}%
-                      </p>
-                    </div>
+
+                    {isAdmin && (
+                      <div className="bg-green-50 rounded px-2 py-1">
+                        <p className="text-xs font-semibold text-green-700">
+                          {formatRupiah(tx.total_margin || 0)}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          {tx.margin_percent || 0}%
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </button>
@@ -277,7 +269,11 @@ function TransactionHistory() {
         </div>
       )}
 
-      <DetailModal transaction={selected} onClose={() => setSelected(null)} />
+      <DetailModal
+        transaction={selected}
+        onClose={() => setSelected(null)}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
