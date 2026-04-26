@@ -1,22 +1,21 @@
 // src/services/checkoutService.js
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { processCheckoutWithMargins } from "./marginService";
-import { supabase } from "./supabase";
+import { useAuth } from "../hooks/useAuth";
 
 /**
  * Checkout mutation with margin calculation
  */
 export const useCheckout = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
 
   return useMutation({
     mutationFn: async (checkoutData) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!userId) throw new Error("User not authenticated");
 
-      const result = await processCheckoutWithMargins(checkoutData, user.id);
+      const result = await processCheckoutWithMargins(checkoutData, userId);
 
       if (!result.success) {
         throw new Error(result.error || "Checkout failed");
@@ -25,7 +24,7 @@ export const useCheckout = () => {
       return result.data;
     },
     onSuccess: () => {
-      // Invalidate caches setelah checkout berhasil
+      // Invalidate caches after checkout completed
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
