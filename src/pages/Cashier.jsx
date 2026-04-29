@@ -8,6 +8,7 @@ import ScannerListener from "../components/pos/ScannerListener";
 import Modal from "../components/ui/Modal";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
+import { usePermission } from "../hooks/useAuth";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
@@ -121,6 +122,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
 }
 
 function SuccessModal({ isOpen, data, onClose }) {
+  const isAdmin = usePermission("view_all_transactions");
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Transaksi Berhasil">
       <div className="text-center space-y-4">
@@ -148,23 +150,29 @@ function SuccessModal({ isOpen, data, onClose }) {
                 {formatRupiah(data.total_price)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total Modal</span>
-              <span className="font-semibold">
-                {formatRupiah(data.total_cost)}
-              </span>
-            </div>
-            <div className="border-t border-gray-200 pt-3 flex justify-between">
-              <span className="text-sm font-semibold text-green-700">
-                Margin
-              </span>
-              <div className="text-right">
-                <p className="text-lg font-bold text-green-600">
-                  {formatRupiah(data.total_margin)}
-                </p>
-                <p className="text-xs text-green-600">{data.margin_percent}%</p>
-              </div>
-            </div>
+            {isAdmin && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Modal</span>
+                  <span className="font-semibold">
+                    {formatRupiah(data.total_cost)}
+                  </span>
+                </div>
+                <div className="border-t border-gray-200 pt-3 flex justify-between">
+                  <span className="text-sm font-semibold text-green-700">
+                    Margin
+                  </span>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-600">
+                      {formatRupiah(data.total_margin)}
+                    </p>
+                    <p className="text-xs text-green-600">
+                      {data.margin_percent}%
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

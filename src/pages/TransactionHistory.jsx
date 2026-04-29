@@ -186,21 +186,26 @@ function TransactionHistory() {
               {formatRupiah(totalRevenue)}
             </p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-            <p className="text-xs text-gray-500">Total Modal</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatRupiah(totalCost)}
-            </p>
-          </div>
-          {isAdmin && (
-            <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
-              <p className="text-xs text-green-600 font-medium">Total Margin</p>
-              <p className="text-2xl font-bold text-green-700 mt-1">
-                {formatRupiah(totalMargin)}
-              </p>
 
-              <p className="text-xs text-green-600 mt-1">{marginPercent}%</p>
-            </div>
+          {isAdmin && (
+            <>
+              <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
+                <p className="text-xs text-gray-500">Total Modal</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {formatRupiah(totalCost)}
+                </p>
+              </div>
+              <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
+                <p className="text-xs text-green-600 font-medium">
+                  Total Margin
+                </p>
+                <p className="text-2xl font-bold text-green-700 mt-1">
+                  {formatRupiah(totalMargin)}
+                </p>
+
+                <p className="text-xs text-green-600 mt-1">{marginPercent}%</p>
+              </div>
+            </>
           )}
         </div>
       )}
