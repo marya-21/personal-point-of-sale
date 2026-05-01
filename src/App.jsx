@@ -107,16 +107,16 @@ function NavBar() {
 }
 
 function AppShell() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect ke login jika session expired (auto-logout karena inaktivitas)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       queryClient.clear();
       navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
 
   return (
     <>
