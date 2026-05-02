@@ -1,16 +1,57 @@
-# React + Vite
+# POS System (Point of Sale)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, fast, and secure web-based POS system built with React, Tailwind CSS, and Supabase. Designed specifically for efficiency with barcode scanners and robust stock management.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
+- **Fast Scanning**: Cache-first architecture using TanStack Query for instant barcode lookups.
+- **Role-Based Access**: Multi-role support (Admin, Manager, Kasir, Warehouse, Accounting).
+- **Audit Trails**: Complete history of price changes, stock movements, and system logs.
+- **Reliable Cart**: Client-side state management with Zustand to prevent data loss.
+- **Secure**: Row Level Security (RLS) and atomic stock operations.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠 Tech Stack
+- **Frontend**: React (Vite)
+- **Styling**: Tailwind CSS v4
+- **Database**: Supabase (PostgreSQL)
+- **State**: TanStack Query v5 & Zustand
 
-## React Compiler
+## 🏁 Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
+- Node.js (Latest LTS)
+- Supabase Account
 
-## Expanding the ESLint configuration
+### Installation
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Setup environment variables in `.env`:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📂 Project Structure
+- `src/components/pos`: Core POS logic and UI.
+- `src/hooks`: Custom hooks like `useBarcodeScanner`.
+- `src/store`: Zustand stores for cart and session.
+- `CLAUDE/`: Detailed documentation for database, roles, and policies.
+
+## 📜 Role Matrix Summary
+| Feature | Kasir | Admin | Warehouse | Accounting |
+| :--- | :---: | :---: | :---: | :---: |
+| Create Transaction | ✓ | ✓ | - | - |
+| View Stock | ✓ | ✓ | ✓ | - |
+| Adjust Stock | - | ✓ | ✓ | - |
+| View Financials | - | ✓ | - | ✓ |
+| Manage Users | - | ✓ | - | - |
+
+## 🛠 Development Commands
+- `npm run build`: Production build.
+- `npm run preview`: Preview production build locally.
