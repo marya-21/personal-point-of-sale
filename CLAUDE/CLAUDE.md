@@ -78,29 +78,4 @@ npm run dev       # Jalankan dev server
 npm run build     # Build production
 npm run preview   # Preview hasil build
 
-7. Key Conventions
-- Tailwind CSS v4 (bukan v3): setup pakai @tailwindcss/vite plugin, bukan postcss.
-  Import di CSS: @import "tailwindcss" (bukan @tailwind base/components/utilities)
-- QueryKey ['products'] dipakai bersama di Cashier dan Inventory.
-  Gunakan queryClient.invalidateQueries({ queryKey: ['products'] }) setelah mutasi.
-- ScannerListener mencari barcode di cache via queryClient.getQueryData(['products']),
-  BUKAN request API baru. Jangan ubah pola ini.
-- Supabase function atomik: decrement_stock(product_id UUID, amount INTEGER)
-  Dipanggil via supabase.rpc() saat checkout untuk kurangi stok tanpa race condition.
-- formatRupiah() dari utils/formatCurrency.js untuk semua tampilan harga.
-
-8. Key Business Logic
-Barcode Scanner: Alat scan bekerja sebagai keyboard. Hook harus menangkap rentetan karakter cepat dan mendeteksi kunci "Enter" sebagai akhir kode.
-
-Real-time Stock: Jika memungkinkan, gunakan fitur Realtime Supabase agar stok di layar kasir terupdate jika admin mengubah data di halaman lain.
-
-Offline Handling: Keranjang belanja disimpan di Zustand agar transaksi tidak hilang jika koneksi internet tidak stabil selama proses pemindaian.
-
-9. Fitur Belum Dibuat (Roadmap)
-- Realtime stock update via supabase.channel() di Cashier
-- Autentikasi (Role: kasir vs admin — pisah akses halaman Inventory)
-- Integrasi printer thermal
-- Export laporan penjualan
-- Di halaman inventory otomatis buka detail barang jika langsung melakukan scan
-- brainstorm tentang pembuatan dashboard
 
