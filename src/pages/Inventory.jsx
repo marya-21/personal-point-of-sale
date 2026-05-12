@@ -336,7 +336,7 @@ function Inventory() {
                       </th>
                       {isAdmin && (
                         <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Margin
+                          Laba Kotor
                         </th>
                       )}
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
