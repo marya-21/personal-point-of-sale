@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTransactionWithMargins } from "../services/marginService";
 import { formatRupiah } from "../utils/formatCurrency";
-import Modal from "../components/ui/Modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAuth } from "../hooks/useAuth";
 import { useTransactions } from "../services/transactionService";
 

@@ -5,9 +5,9 @@ import useCartStore from "../store/useCartStore";
 import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
-import Modal from "../components/ui/Modal";
-import Button from "../components/ui/Button";
-import Input from "../components/ui/Input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/modal";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { usePermission } from "../hooks/useAuth";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {

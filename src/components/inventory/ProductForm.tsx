@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { formatNumber, formatRupiah } from "../../utils/formatCurrency";
-import Input from "../ui/Input";
-import Button from "../ui/Button";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 
 //  Form for create/edit product with margin calculation
 function ProductForm({ initialData, onCancel, onSubmit, isPending }) {

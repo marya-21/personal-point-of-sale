@@ -9,9 +9,9 @@ import {
 } from "../services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "../components/inventory/ProductForm";
-import Button from "../components/ui/Button";
-import Input from "../components/ui/Input";
-import Modal from "../components/ui/Modal";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAuth, usePermission } from "../hooks/useAuth";
 
 async function fetchTopSelling() {

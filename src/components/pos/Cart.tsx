@@ -1,6 +1,6 @@
 import useCartStore from '../../store/useCartStore'
 import { formatRupiah } from '../../utils/formatCurrency'
-import Button from '../ui/Button'
+import { Button } from '../ui/button'
 
 function CartItem({ item }) {
   const { addItem, decreaseQty, removeItem } = useCartStore()
