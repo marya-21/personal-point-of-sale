@@ -71,28 +71,29 @@ function TopSellingPanel({ items }) {
         )}
       </div>
 
-      <Modal
-        isOpen={showAll}
-        onClose={() => setShowAll(false)}
-        title="Barang Terlaris"
-      >
-        <ol className="space-y-2 max-h-96 overflow-y-auto pr-1">
-          {items.map((item, i) => (
-            <li
-              key={item.name}
-              className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
-            >
-              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">
-                {i + 1}
-              </span>
-              <span className="text-sm text-gray-800 flex-1">{item.name}</span>
-              <span className="text-sm font-semibold text-gray-600">
-                {item.qty} terjual
-              </span>
-            </li>
-          ))}
-        </ol>
-      </Modal>
+      <Dialog open={showAll} onOpenChange={() => setShowAll(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Barang Terlaris</DialogTitle>
+          </DialogHeader>
+          <ol className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {items.map((item, i) => (
+              <li
+                key={item.name}
+                className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
+              >
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-sm text-gray-800 flex-1">{item.name}</span>
+                <span className="text-sm font-semibold text-gray-600">
+                  {item.qty} terjual
+                </span>
+              </li>
+            ))}
+          </ol>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -147,58 +148,59 @@ function StockAlertPanel({ outOfStock, lowStock }) {
         )}
       </div>
 
-      <Modal
-        isOpen={showAll}
-        onClose={() => setShowAll(false)}
-        title="Stok Habis & Akan Habis"
-      >
-        {outOfStock.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase text-red-600 mb-2 tracking-wider">
-              Habis
-            </p>
-            <ul className="space-y-2">
-              {outOfStock.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
-                >
-                  <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                  <span className="text-sm text-gray-800 flex-1">
-                    {item.name}
-                  </span>
-                  <span className="text-sm font-semibold text-red-600">
-                    Habis
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {lowStock.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase text-yellow-600 mb-2 tracking-wider">
-              Akan Habis (stok &lt; {LOW_STOCK_THRESHOLD})
-            </p>
-            <ul className="space-y-2">
-              {lowStock.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
-                >
-                  <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
-                  <span className="text-sm text-gray-800 flex-1">
-                    {item.name}
-                  </span>
-                  <span className="text-sm font-semibold text-yellow-600">
-                    Sisa {item.stock}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </Modal>
+      <Dialog open={showAll} onOpenChange={() => setShowAll(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Stok Habis & Akan Habis</DialogTitle>
+          </DialogHeader>
+          {outOfStock.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-semibold uppercase text-red-600 mb-2 tracking-wider">
+                Habis
+              </p>
+              <ul className="space-y-2">
+                {outOfStock.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                    <span className="text-sm text-gray-800 flex-1">
+                      {item.name}
+                    </span>
+                    <span className="text-sm font-semibold text-red-600">
+                      Habis
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {lowStock.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase text-yellow-600 mb-2 tracking-wider">
+                Akan Habis (stok &lt; {LOW_STOCK_THRESHOLD})
+              </p>
+              <ul className="space-y-2">
+                {lowStock.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
+                    <span className="text-sm text-gray-800 flex-1">
+                      {item.name}
+                    </span>
+                    <span className="text-sm font-semibold text-yellow-600">
+                      Sisa {item.stock}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -452,19 +454,22 @@ function Inventory() {
         </div>
       </div>
 
-      <Modal
-        isOpen={showModal}
-        onClose={handleCloseModal}
-        title={editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
-      >
-        <ProductForm
-          initialData={editingProduct}
-          onSubmit={handleSubmit}
-          isPending={isPending}
-          onCancel={handleCloseModal}
-        />
-        {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
-      </Modal>
+      <Dialog open={showModal} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          <ProductForm
+            initialData={editingProduct}
+            onSubmit={handleSubmit}
+            isPending={isPending}
+            onCancel={handleCloseModal}
+          />
+          {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

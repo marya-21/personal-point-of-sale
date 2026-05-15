@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/
 import { useAuth } from "../hooks/useAuth";
 import { useTransactions } from "../services/transactionService";
 
-function DetailModal({ transaction, onClose, isAdmin }) {
+function DetailModal({ transaction, onClose, isAdmin }: any) {
   const {
     data: detail,
     isLoading,
@@ -25,7 +25,11 @@ function DetailModal({ transaction, onClose, isAdmin }) {
   });
 
   return (
-    <Modal isOpen={!!transaction} onClose={onClose} title="Detail Transaksi">
+    <Dialog open={!!transaction} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Detail Transaksi</DialogTitle>
+        </DialogHeader>
       <div className="space-y-4">
         <p className="text-sm text-gray-500">{dateStr}</p>
 
@@ -105,7 +109,8 @@ function DetailModal({ transaction, onClose, isAdmin }) {
           </div>
         )}
       </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }
 
