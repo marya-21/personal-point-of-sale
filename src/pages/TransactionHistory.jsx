@@ -196,7 +196,9 @@ function TransactionHistory() {
                 </p>
               </div>
               <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
-                <p className="text-xs text-green-600 font-medium">Laba Kotor</p>
+                <p className="text-xs text-green-600 font-medium dash-underline-tooltip">
+                  Laba Kotor
+                </p>
                 <p className="text-2xl font-bold text-green-700 mt-1">
                   {formatRupiah(totalMargin)}
                 </p>

@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+.dash-underline-tooltip {
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+}
