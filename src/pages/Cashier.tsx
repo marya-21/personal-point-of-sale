@@ -5,7 +5,7 @@ import useCartStore from "../store/useCartStore";
 import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { usePermission } from "../hooks/useAuth";
@@ -55,7 +55,11 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const displayCash = cashAmount ? formatNumber(parseInt(cashAmount)) : "";
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Pembayaran">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Pembayaran</DialogTitle>
+        </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex justify-between">
@@ -117,14 +121,19 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
           </Button>
         </div>
       </form>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function SuccessModal({ isOpen, data, onClose }) {
+function SuccessModal({ isOpen, data, onClose }: any) {
   const isAdmin = usePermission("view_all_transactions");
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Transaksi Berhasil">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Transaksi Berhasil</DialogTitle>
+        </DialogHeader>
       <div className="text-center space-y-4">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
           <svg
@@ -187,7 +196,8 @@ function SuccessModal({ isOpen, data, onClose }) {
           Transaksi Baru
         </Button>
       </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -206,12 +216,12 @@ function Cashier() {
       p.name.toLowerCase().includes(searchQuery.toLowerCase()),
     ) ?? [];
 
-  const handleNotFound = (barcode) => {
+  const handleNotFound = (barcode: string) => {
     setNotFoundBarcode(barcode);
     setTimeout(() => setNotFoundBarcode(""), 3000);
   };
 
-  const handleCheckoutSuccess = (data) => {
+  const handleCheckoutSuccess = (data: any) => {
     setShowCheckout(false);
     setSuccessData(data);
   };
