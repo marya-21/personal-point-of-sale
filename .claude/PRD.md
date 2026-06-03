@@ -59,10 +59,11 @@ The system implements Role-Based Access Control (RBAC) with the following person
 ---
 
 ## 5. Database Schema Highlights
-- **`products`**: UUID keys, barcodes, price snapshots, and stock levels.
+- **`products` & `product_units`**: UUID keys, barcodes, price snapshots, stock levels & Stores units of measure for each product.
 - **`transactions` & `items`**: Header-detail relationship with margin calculation per transaction.
 - **`product_price_history`**: Audit trail for price fluctuations.
 - **`audit_logs` & `stock_history`**: Immutable system logs for forensics.
+- **`product_units`**: Stores units of measure for each product, including base units and conversions.
 
 ---
 
