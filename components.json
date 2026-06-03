@@ -7,7 +7,7 @@
   "css": "@/index.css",
   "cssVariables": true,
   "tailwind": {
-    "config": "tailwind.config.ts",
+    "config": "",
     "css": "src/index.css",
     "baseColor": "slate"
   },

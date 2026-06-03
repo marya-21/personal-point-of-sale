@@ -105,31 +105,31 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
       <div
         className={`rounded-lg p-3 ${
           isMarginNegative
-            ? "bg-red-50 border border-red-200"
-            : "bg-green-50 border border-green-200"
+            ? "bg-warning-light border border-warning"
+            : "bg-success-light border border-success"
         }`}
       >
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p
-              className={`text-xs font-semibold ${isMarginNegative ? "text-red-600" : "text-green-600"}`}
+              className={`text-xs font-semibold ${isMarginNegative ? "text-warning" : "text-success"}`}
             >
               Margin (Rp)
             </p>
             <p
-              className={`text-lg font-bold mt-1 ${isMarginNegative ? "text-red-700" : "text-green-700"}`}
+              className={`text-lg font-bold mt-1 ${isMarginNegative ? "text-warning" : "text-success"}`}
             >
               {formatRupiah(margin.margin_rp)}
             </p>
           </div>
           <div>
             <p
-              className={`text-xs font-semibold ${isMarginNegative ? "text-red-600" : "text-green-600"}`}
+              className={`text-xs font-semibold ${isMarginNegative ? "text-warning" : "text-success"}`}
             >
               Margin (%)
             </p>
             <p
-              className={`text-lg font-bold mt-1 ${isMarginNegative ? "text-red-700" : "text-green-700"}`}
+              className={`text-lg font-bold mt-1 ${isMarginNegative ? "text-warning" : "text-success"}`}
             >
               {margin.margin_percent}%
             </p>
@@ -137,7 +137,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
         </div>
 
         {isMarginNegative && (
-          <p className="text-xs text-red-600 mt-2 font-medium">
+          <p className="text-xs text-warning mt-2 font-medium">
             ⚠️ Harga jual lebih rendah dari harga pokok!
           </p>
         )}
@@ -173,7 +173,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
       </div>
 
       {isMarginNegative && (
-        <p className="text-xs text-red-600 text-center">
+        <p className="text-xs text-warning text-center">
           Tidak bisa simpan produk dengan margin negatif
         </p>
       )}
