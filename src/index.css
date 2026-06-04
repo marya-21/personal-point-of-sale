@@ -25,6 +25,8 @@
   --color-success-light: hsl(142 72% 90%);
   --color-warning: hsl(38 92% 50%);
   --color-warning-light: hsl(38 92% 90%);
+  --color-error: hsl(0 84.2% 60.2%);
+  --color-error-light: hsl(0 84.2% 90%);
 
   --radius-lg: 0.5rem;
   --radius-md: calc(0.5rem - 2px);

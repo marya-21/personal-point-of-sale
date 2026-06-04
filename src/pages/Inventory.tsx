@@ -38,7 +38,7 @@ function TopSellingPanel({ items }) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-background rounded-xl shadow-sm p-4">
         <h2 className="font-semibold text-gray-900 mb-3">Barang Terlaris</h2>
         {items.length === 0 ? (
           <p className="text-sm text-gray-400 py-2">
@@ -109,7 +109,7 @@ function StockAlertPanel({ outOfStock, lowStock }) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-background rounded-xl shadow-sm p-4">
         <h2 className="font-semibold text-gray-900 mb-3">Stok</h2>
         {combined.length === 0 ? (
           <p className="text-sm text-gray-400 py-2">Semua stok aman.</p>
@@ -119,7 +119,7 @@ function StockAlertPanel({ outOfStock, lowStock }) {
               <li key={item.id} className="flex items-center gap-2">
                 <span
                   className={`w-2 h-2 rounded-full shrink-0 ${
-                    item._status === "habis" ? "bg-red-500" : "bg-yellow-400"
+                    item._status === "habis" ? "bg-error" : "bg-warning"
                   }`}
                 />
                 <span className="text-sm text-gray-800 flex-1 truncate">
@@ -128,8 +128,8 @@ function StockAlertPanel({ outOfStock, lowStock }) {
                 <span
                   className={`text-xs font-semibold ${
                     item._status === "habis"
-                      ? "text-red-600"
-                      : "text-yellow-600"
+                      ? "text-error"
+                      : "text-warning"
                   }`}
                 >
                   {item.stock === 0 ? "Habis" : `Sisa ${item.stock}`}
@@ -155,7 +155,7 @@ function StockAlertPanel({ outOfStock, lowStock }) {
           </DialogHeader>
           {outOfStock.length > 0 && (
             <div className="mb-4">
-              <p className="text-xs font-semibold uppercase text-red-600 mb-2 tracking-wider">
+              <p className="text-xs font-semibold uppercase text-error mb-2 tracking-wider">
                 Habis
               </p>
               <ul className="space-y-2">
@@ -164,11 +164,11 @@ function StockAlertPanel({ outOfStock, lowStock }) {
                     key={item.id}
                     className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
                   >
-                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-error shrink-0" />
                     <span className="text-sm text-gray-800 flex-1">
                       {item.name}
                     </span>
-                    <span className="text-sm font-semibold text-red-600">
+                    <span className="text-sm font-semibold text-error">
                       Habis
                     </span>
                   </li>
@@ -178,7 +178,7 @@ function StockAlertPanel({ outOfStock, lowStock }) {
           )}
           {lowStock.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase text-yellow-600 mb-2 tracking-wider">
+              <p className="text-xs font-semibold uppercase text-warning mb-2 tracking-wider">
                 Akan Habis (stok &lt; {LOW_STOCK_THRESHOLD})
               </p>
               <ul className="space-y-2">
@@ -187,11 +187,11 @@ function StockAlertPanel({ outOfStock, lowStock }) {
                     key={item.id}
                     className="flex items-center gap-3 py-1 border-b border-gray-100 last:border-0"
                   >
-                    <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-warning shrink-0" />
                     <span className="text-sm text-gray-800 flex-1">
                       {item.name}
                     </span>
-                    <span className="text-sm font-semibold text-yellow-600">
+                    <span className="text-sm font-semibold text-warning">
                       Sisa {item.stock}
                     </span>
                   </li>
