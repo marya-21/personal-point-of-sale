@@ -9,7 +9,8 @@
   "tailwind": {
     "config": "",
     "css": "src/index.css",
-    "baseColor": "slate"
+    "baseColor": "slate",
+    "cssVariables": true
   },
   "aliases": {
     "@/components": "./src/components",
