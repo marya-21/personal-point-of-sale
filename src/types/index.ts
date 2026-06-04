@@ -2,9 +2,9 @@ export interface Product {
   id: string
   name: string
   barcode: string
-  price: number
   stock: number
-  cost_price?: number
+  price_sell: number
+  price_cost: number
 }
 
 export interface CartItem extends Product {

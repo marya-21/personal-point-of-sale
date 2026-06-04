@@ -1,113 +1,120 @@
 import React, { useMemo, useState } from "react";
-import { formatNumber, formatRupiah } from "../../utils/formatCurrency";
+import { Controller, useForm } from "react-hook-form"
+import { formatRupiah, formatNumber, } from "../../utils/formatCurrency";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { Product } from "@/types";
+
+interface ProductFormProps {
+  initialData?: Product;
+  onCancel: () => void;
+  onSubmit: (data: Product) => void;
+  isPending?: boolean;
+}
 
 //  Form for create/edit product with margin calculation
-function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
-  const [form, setForm] = useState(
-    initialData || {
+function ProductForm({ initialData, onCancel, onSubmit, isPending }: ProductFormProps) {
+  const { control, handleSubmit, watch } = useForm<Product>({
+    defaultValues: initialData || {
       barcode: "",
       name: "",
-      price_cost: "",
-      price_sell: "",
-      stock: "",
+      price_cost: 0,
+      price_sell: 0,
+      stock: 0,
     },
+  });
+
+  const [costPriceDisplay, setCostPriceDisplay] = useState(
+    initialData?.price_cost ? formatNumber(initialData.price_cost) : ""
   );
+  const [priceDisplay, setPriceDisplay] = useState(
+    initialData?.price_sell ? formatNumber(initialData.price_sell) : ""
+  );
+
+  const cost_price = watch("price_cost") || 0;
+  const price_sell = watch("price_sell") || 0;
 
   // Calculate margin whenever prices change
   const margin = useMemo(() => {
-    const cost = parseInt(form.price_cost) || 0;
-    const sell = parseInt(form.price_sell) || 0;
-
-    const margin_rp = sell - cost;
-    const margin_percent = sell > 0 ? ((margin_rp / sell) * 100).toFixed(2) : 0;
+    const margin_rp = price_sell - cost_price;
+    const margin_percent = price_sell > 0 ? ((margin_rp / price_sell) * 100).toFixed(2) : 0;
 
     return {
       margin_rp,
       margin_percent,
     };
-  }, [form.price_cost, form.price_sell]);
+  }, [cost_price, price_sell]);
 
-  //   List functions
   const isMarginNegative = margin.margin_rp < 0;
 
-  const handleChange = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+  const handlePriceChange = (value: string, onChange: (value: number) => void, setDisplay: (value: string) => void) => {
+    const raw = value.replace(/[^0-9]/g, "");
+    if (raw !== "") {
+      const num = parseInt(raw, 10);
+      setDisplay(formatNumber(num));
+      return onChange(num);
+    }
+    setDisplay("");
+    return onChange(0);
   };
 
-  const handlePriceChange = (e) => {
-    const raw = e.target.value.replace(/[^0-9]/g, "");
-    const fieldName = e.target.name;
-    setForm((prev) => ({
-      ...prev,
-      [fieldName]: raw,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      ...form,
-      price_cost: parseInt(form.price_cost) || 0,
-      price_sell: parseInt(form.price_sell) || 0,
-      stock: parseInt(form.stock) || 0,
-    });
-  };
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Barcode"
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <Controller
         name="barcode"
-        value={form.barcode}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: 8991234567890"
+        control={control}
+        render={({ field }) =>
+          <Input
+            {...field}
+            label="Barcode"
+            required
+            placeholder="Contoh: 8991234567890"
+          // aria-invalid={fieldState.invalid}
+          />}
       />
-
-      <Input
-        label="Nama Produk"
+      <Controller
         name="name"
-        value={form.name}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: Aqua 600ml"
+        control={control}
+        render={({ field }) =>
+          <Input
+            {...field}
+            label="Nama Produk"
+            required
+            placeholder="Contoh: 8991234567890"
+          />}
       />
-
       <div className="grid grid-cols-2 gap-3">
-        <Input
-          label="Harga Pokok (Rp)"
-          name="price_cost"
-          type="text"
-          inputMode="numeric"
-          value={form.price_cost === "" ? "" : formatNumber(form.price_cost)}
-          onChange={handlePriceChange}
-          required
-          placeholder="Contoh: 8.000"
+        <Controller name="price_cost" control={control} render={({ field }) =>
+          <Input
+            value={costPriceDisplay}
+            label="Harga Pokok (Rp)"
+            type="text"
+            inputMode="numeric"
+            required
+            min={1}
+            onChange={(e) => handlePriceChange(e.target.value, field.onChange, setCostPriceDisplay)}
+            placeholder="Contoh: 8000"
+          />}
         />
-
-        <Input
-          label="Harga Jual (Rp)"
-          name="price_sell"
-          type="text"
-          inputMode="numeric"
-          value={form.price_sell === "" ? "" : formatNumber(form.price_sell)}
-          onChange={handlePriceChange}
-          required
-          placeholder="Contoh: 12.000"
-        />
+        <Controller name="price_sell" control={control} render={({ field }) =>
+          <Input
+            value={priceDisplay}
+            label="Harga Jual (Rp)"
+            type="text"
+            inputMode="numeric"
+            required
+            min={1}
+            onChange={(e) => handlePriceChange(e.target.value, field.onChange, setPriceDisplay)}
+            placeholder="Contoh: 12000"
+          />} />
       </div>
 
       {/* Margin Display */}
       <div
-        className={`rounded-lg p-3 ${
-          isMarginNegative
-            ? "bg-warning-light border border-warning"
-            : "bg-success-light border border-success"
-        }`}
+        className={`rounded-lg p-3 ${isMarginNegative
+          ? "bg-warning-light border border-warning"
+          : "bg-success-light border border-success"
+          }`}
       >
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -142,17 +149,17 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
           </p>
         )}
       </div>
-
-      <Input
-        label="Stok Awal"
-        name="stock"
-        type="number"
-        value={form.stock}
-        onChange={handleChange}
-        required
-        placeholder="Contoh: 100"
+      <Controller name="stock" control={control} render={({ field }) =>
+        <Input
+          {...field}
+          label="Stok Awal"
+          type="number"
+          inputMode="numeric"
+          required
+          min={1}
+          placeholder="Contoh: 100"
+        />}
       />
-
       <div className="flex gap-3 pt-2">
         <Button
           type="button"
@@ -171,7 +178,6 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending }) {
           {isPending ? "Menyimpan..." : "Simpan"}
         </Button>
       </div>
-
       {isMarginNegative && (
         <p className="text-xs text-warning text-center">
           Tidak bisa simpan produk dengan margin negatif

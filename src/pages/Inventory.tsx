@@ -13,15 +13,29 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAuth, usePermission } from "../hooks/useAuth";
+import { Product } from "@/types";
 
-async function fetchTopSelling() {
+type TopSellingItem = {
+  name: string;
+  qty: number;
+};
+
+async function fetchTopSelling(): Promise<TopSellingItem[]> {
   const { data, error } = await supabase
     .from("transaction_items")
     .select("product_id, qty, products(name)");
   if (error) throw error;
 
-  const totals = {};
-  for (const item of data) {
+  const totals: Record<string, TopSellingItem> = {};
+  const rows = Array.isArray(data)
+    ? (data as Array<{
+      product_id: string;
+      qty: number;
+      products?: { name?: string };
+    }>)
+    : [];
+
+  for (const item of rows) {
     const id = item.product_id;
     if (!totals[id]) totals[id] = { name: item.products?.name ?? "—", qty: 0 };
     totals[id].qty += item.qty;
@@ -32,7 +46,7 @@ async function fetchTopSelling() {
 
 const LOW_STOCK_THRESHOLD = 10;
 
-function TopSellingPanel({ items }) {
+function TopSellingPanel({ items }: { items: TopSellingItem[] }) {
   const [showAll, setShowAll] = useState(false);
   const preview = items.slice(0, 4);
 
@@ -98,12 +112,12 @@ function TopSellingPanel({ items }) {
   );
 }
 
-function StockAlertPanel({ outOfStock, lowStock }) {
+function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowStock: Product[] }) {
   const [showAll, setShowAll] = useState(false);
 
   const combined = [
-    ...outOfStock.map((p) => ({ ...p, _status: "habis" })),
-    ...lowStock.map((p) => ({ ...p, _status: "mau_habis" })),
+    ...outOfStock.map((p) => ({ ...p, _status: "habis" as const })),
+    ...lowStock.map((p) => ({ ...p, _status: "mau_habis" as const })),
   ];
   const preview = combined.slice(0, 4);
 
@@ -118,19 +132,17 @@ function StockAlertPanel({ outOfStock, lowStock }) {
             {preview.map((item) => (
               <li key={item.id} className="flex items-center gap-2">
                 <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    item._status === "habis" ? "bg-error" : "bg-warning"
-                  }`}
+                  className={`w-2 h-2 rounded-full shrink-0 ${item._status === "habis" ? "bg-error" : "bg-warning"
+                    }`}
                 />
                 <span className="text-sm text-gray-800 flex-1 truncate">
                   {item.name}
                 </span>
                 <span
-                  className={`text-xs font-semibold ${
-                    item._status === "habis"
-                      ? "text-error"
-                      : "text-warning"
-                  }`}
+                  className={`text-xs font-semibold ${item._status === "habis"
+                    ? "text-error"
+                    : "text-warning"
+                    }`}
                 >
                   {item.stock === 0 ? "Habis" : `Sisa ${item.stock}`}
                 </span>
@@ -207,7 +219,7 @@ function StockAlertPanel({ outOfStock, lowStock }) {
 
 function Inventory() {
   const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
 
   const { user } = useAuth();
@@ -229,7 +241,7 @@ function Inventory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleEdit = (product) => {
+  const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setShowModal(true);
   };
@@ -246,21 +258,24 @@ function Inventory() {
     updateMutation.reset();
   };
 
-  const handleSubmit = (data) => {
+  const handleSubmit = (data: Product) => {
+    const userId = user?.id;
+    if (!userId) return;
+
     if (editingProduct?.id) {
       updateMutation.mutate(
-        { ...data, id: editingProduct.id, userId: user?.id },
+        { ...data, id: editingProduct.id, userId },
         { onSuccess: handleCloseModal },
       );
     } else {
       createMutation.mutate(
-        { ...data, userId: user?.id },
+        { ...data, userId },
         { onSuccess: handleCloseModal },
       );
     }
   };
 
-  const handleDelete = (product) => {
+  const handleDelete = (product: Product) => {
     if (window.confirm(`Hapus produk "${product.name}"?`)) {
       deleteMutation.mutate(product.id);
     }
@@ -374,20 +389,18 @@ function Inventory() {
                           <td className="py-3 px-4 text-right">
                             <div className="text-right">
                               <span
-                                className={`text-sm font-semibold ${
-                                  product.margin_rp < 0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }`}
+                                className={`text-sm font-semibold ${product.margin_rp < 0
+                                  ? "text-red-600"
+                                  : "text-green-600"
+                                  }`}
                               >
                                 {formatRupiah(product.margin_rp)}
                               </span>
                               <p
-                                className={`text-xs ${
-                                  product.margin_rp < 0
-                                    ? "text-red-500"
-                                    : "text-green-500"
-                                }`}
+                                className={`text-xs ${product.margin_rp < 0
+                                  ? "text-red-500"
+                                  : "text-green-500"
+                                  }`}
                               >
                                 {product.margin_percent}%
                               </p>
@@ -397,13 +410,12 @@ function Inventory() {
 
                         <td className="py-3 px-4 text-right">
                           <span
-                            className={`text-sm font-semibold ${
-                              product.stock === 0
-                                ? "text-red-600"
-                                : product.stock < LOW_STOCK_THRESHOLD
-                                  ? "text-yellow-600"
-                                  : "text-gray-900"
-                            }`}
+                            className={`text-sm font-semibold ${product.stock === 0
+                              ? "text-red-600"
+                              : product.stock < LOW_STOCK_THRESHOLD
+                                ? "text-yellow-600"
+                                : "text-gray-900"
+                              }`}
                           >
                             {product.stock}
                           </span>
@@ -422,7 +434,7 @@ function Inventory() {
                               )}
                               {canDelete && (
                                 <Button
-                                  variant="danger"
+                                  variant="destructive"
                                   className="text-sm py-1 px-3"
                                   onClick={() => handleDelete(product)}
                                   disabled={deleteMutation.isPending}
@@ -455,14 +467,14 @@ function Inventory() {
       </div>
 
       <Dialog open={showModal} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md ">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
             </DialogTitle>
           </DialogHeader>
           <ProductForm
-            initialData={editingProduct}
+            initialData={editingProduct ?? undefined}
             onSubmit={handleSubmit}
             isPending={isPending}
             onCancel={handleCloseModal}

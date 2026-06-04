@@ -1,7 +1,13 @@
 // src/services/productService.js
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Product } from "@/types";
 import { createOrUpdateProductWithAudit } from "./marginService";
 import { supabase } from "./supabase";
+
+type ProductMutationPayload = Product & {
+  userId: string;
+  reason?: string;
+};
 
 /**
  * Fetch all products with margin calculations
@@ -21,7 +27,7 @@ export const useProducts = () => {
       // Calculate margin info on frontend
       return data.map((product) => ({
         ...product,
-        margin_rp: (product.price_sell || 0) - (product.price_cost || 0),
+        margin_rp: (product.price || 0) - (product.cost_price || 0),
         margin_percent:
           product.price_sell > 0
             ? (
@@ -38,7 +44,7 @@ export const useProducts = () => {
 /**
  * Fetch single product
  */
-export const useProduct = (productId) => {
+export const useProduct = (productId: string | null) => {
   return useQuery({
     queryKey: ["product", productId],
     queryFn: async () => {
@@ -72,8 +78,9 @@ export const useProduct = (productId) => {
 export const useCreateProduct = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ userId, ...productData }) => {
+  return useMutation<any, Error, Omit<ProductMutationPayload, "id">>({
+    mutationFn: async (payload) => {
+      const { userId, ...productData } = payload;
       if (!userId) throw new Error("User not authenticated");
 
       const result = await createOrUpdateProductWithAudit(productData, userId);
@@ -96,8 +103,9 @@ export const useCreateProduct = () => {
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ userId, ...productData }) => {
+  return useMutation<any, Error, ProductMutationPayload>({
+    mutationFn: async (payload) => {
+      const { userId, ...productData } = payload;
       if (!userId) throw new Error("User not authenticated");
 
       const result = await createOrUpdateProductWithAudit(productData, userId);
@@ -121,7 +129,7 @@ export const useUpdateProduct = () => {
 export const useDeleteProduct = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<any, Error, string>({
     mutationFn: async (productId) => {
       const { error } = await supabase
         .from("products")
