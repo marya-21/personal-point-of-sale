@@ -7,7 +7,27 @@ import {
   destroySession,
 } from "../services/sessionService";
 
-export const AuthContext = createContext();
+type AuthUser = {
+  id: string;
+  email: string;
+  full_name?: string;
+  role?: {
+    name?: string;
+  } | null;
+};
+
+export interface AuthContextValue {
+  user: AuthUser | null;
+  permissions: string[];
+  loading: boolean;
+  sessionToken: string | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: (onLogout?: () => void) => Promise<void>;
+  hasPermission: (name: string) => boolean;
+  isAuthenticated: boolean;
+}
+
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour
 const ACTIVITY_DEBOUNCE_MS = 30 * 1000; // 30 detik (max 1x update ke server per 30s)
