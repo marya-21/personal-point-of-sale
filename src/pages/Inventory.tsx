@@ -226,7 +226,6 @@ function Inventory() {
   const canCreate = usePermission("create_product");
   const canEdit = usePermission("edit_product");
   const canDelete = usePermission("delete_product");
-  const isAdmin = usePermission("view_all_transactions");
   const canManage = canEdit || canDelete;
 
   // Use service hooks
@@ -351,11 +350,6 @@ function Inventory() {
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         H. Jual
                       </th>
-                      {isAdmin && (
-                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Laba Kotor
-                        </th>
-                      )}
                       <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Stok
                       </th>
@@ -385,28 +379,7 @@ function Inventory() {
                             {formatRupiah(product.price_sell)}
                           </span>
                         </td>
-                        {isAdmin && (
-                          <td className="py-3 px-4 text-right">
-                            <div className="text-right">
-                              <span
-                                className={`text-sm font-semibold ${product.margin_rp < 0
-                                  ? "text-red-600"
-                                  : "text-green-600"
-                                  }`}
-                              >
-                                {formatRupiah(product.margin_rp)}
-                              </span>
-                              <p
-                                className={`text-xs ${product.margin_rp < 0
-                                  ? "text-red-500"
-                                  : "text-green-500"
-                                  }`}
-                              >
-                                {product.margin_percent}%
-                              </p>
-                            </div>
-                          </td>
-                        )}
+
 
                         <td className="py-3 px-4 text-right">
                           <span
