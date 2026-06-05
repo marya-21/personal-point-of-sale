@@ -18,17 +18,17 @@ const useCartStore = create<CartStore>((set, get) => ({
     const existing = items.find((item) => item.id === product.id)
 
     if (existing) {
-      if (existing.quantity >= product.stock) return
+      if (existing.qty >= product.stock) return
       set({
         items: items.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, qty: item.qty + 1 }
             : item
         ),
       })
     } else {
       if (product.stock <= 0) return
-      set({ items: [...items, { ...product, quantity: 1 }] })
+      set({ items: [...items, { ...product, qty: 1 }] })
     }
   },
 
@@ -41,12 +41,12 @@ const useCartStore = create<CartStore>((set, get) => ({
     const existing = items.find((item) => item.id === productId)
     if (!existing) return
 
-    if (existing.quantity === 1) {
+    if (existing.qty === 1) {
       set({ items: items.filter((item) => item.id !== productId) })
     } else {
       set({
         items: items.map((item) =>
-          item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
+          item.id === productId ? { ...item, qty: item.qty - 1 } : item
         ),
       })
     }
@@ -55,7 +55,7 @@ const useCartStore = create<CartStore>((set, get) => ({
   clearCart: () => set({ items: [] }),
 
   getTotal: () => {
-    return get().items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    return get().items.reduce((sum, item) => sum + item.price_sell * item.qty, 0)
   },
 }))
 

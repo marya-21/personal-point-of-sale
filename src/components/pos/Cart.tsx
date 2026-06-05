@@ -2,7 +2,7 @@ import useCartStore from '../../store/useCartStore'
 import { formatRupiah } from '../../utils/formatCurrency'
 import { Button } from '../ui/button'
 
-function CartItem({ item }) {
+function CartItem({ item }: { item: any }) {
   const { addItem, decreaseQty, removeItem } = useCartStore()
 
   return (
@@ -41,7 +41,7 @@ function CartItem({ item }) {
   )
 }
 
-function Cart({ onCheckout }) {
+function Cart({ onCheckout }: { onCheckout: () => void }) {
   const { items, clearCart, getTotal } = useCartStore()
   const total = getTotal()
 
@@ -81,7 +81,7 @@ function Cart({ onCheckout }) {
           <span className="text-xl font-bold text-gray-900">{formatRupiah(total)}</span>
         </div>
         <Button
-          variant="success"
+          variant="primary"
           className="w-full py-3 text-base"
           onClick={onCheckout}
           disabled={items.length === 0}

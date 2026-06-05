@@ -8,7 +8,7 @@ export interface Product {
 }
 
 export interface CartItem extends Product {
-  quantity: number
+  qty: number
 }
 
 export interface Transaction {
