@@ -13,6 +13,15 @@ import ProductForm from "../components/inventory/ProductForm";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth, usePermission } from "../hooks/useAuth";
 import { Product } from "@/types";
 
@@ -222,6 +231,7 @@ function Inventory() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
 
   const { user } = useAuth();
   const canCreate = usePermission("create_product");
@@ -294,8 +304,17 @@ function Inventory() {
   };
 
   const handleDelete = (product: Product) => {
-    if (window.confirm(`Hapus produk "${product.name}"?`)) {
-      deleteMutation.mutate(product.id);
+    setDeleteConfirm(product);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm) {
+      deleteMutation.mutate(deleteConfirm.id, {
+        onSuccess: () => {
+          toast.success("Produk berhasil dihapus");
+          setDeleteConfirm(null);
+        },
+      });
     }
   };
 
@@ -474,6 +493,27 @@ function Inventory() {
           {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Produk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus produk "{deleteConfirm?.name}"? Aksi ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Menghapus..." : "Hapus"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
