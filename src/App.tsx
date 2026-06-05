@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { Toaster } from "./components/ui/toaster";
 import Cashier from "./pages/Cashier";
 import Inventory from "./pages/Inventory";
 import TransactionHistory from "./pages/TransactionHistory";
@@ -170,6 +171,7 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <AppShell />
+          <Toaster />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
