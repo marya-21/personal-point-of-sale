@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "../services/supabase";
 import {
   useCreateProduct,
@@ -257,6 +258,14 @@ function Inventory() {
     updateMutation.reset();
   };
 
+  const showSuccess = (type: "create" | "update") => {
+    const message =
+      type === "create"
+        ? "Produk berhasil ditambahkan"
+        : "Produk berhasil diperbarui";
+    toast.success(message);
+  };
+
   const handleSubmit = (data: Product) => {
     const userId = user?.id;
     if (!userId) return;
@@ -264,12 +273,22 @@ function Inventory() {
     if (editingProduct?.id) {
       updateMutation.mutate(
         { ...data, id: editingProduct.id, userId },
-        { onSuccess: handleCloseModal },
+        {
+          onSuccess: () => {
+            showSuccess("update");
+            setTimeout(handleCloseModal, 1000);
+          },
+        },
       );
     } else {
       createMutation.mutate(
         { ...data, userId },
-        { onSuccess: handleCloseModal },
+        {
+          onSuccess: () => {
+            showSuccess("create");
+            setTimeout(handleCloseModal, 1000);
+          },
+        },
       );
     }
   };
