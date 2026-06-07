@@ -1,3 +1,4 @@
+import { CircleMinus, CirclePlus, Trash } from 'lucide-react'
 import useCartStore from '../../store/useCartStore'
 import { formatRupiah } from '../../utils/formatCurrency'
 import { Button } from '../ui/button'
@@ -6,37 +7,47 @@ function CartItem({ item }: { item: any }) {
   const { addItem, decreaseQty, removeItem } = useCartStore()
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-100">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-        <p className="text-xs text-gray-500">{formatRupiah(item.price_sell)}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => decreaseQty(item.id)}
-          className="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-700 font-bold cursor-pointer"
+    <div className="flex flex-col gap-3 py-3 border-b border-border">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <p className="text-xs text-gray-500">{formatRupiah(item.price_sell)}</p>
+        </div>
+        <Button
+          onClick={() => removeItem(item.id)}
+          variant="link"
+          size="icon"
+          className="text-destructive hover:text-destructive/50"
         >
-          -
-        </button>
-        <span className="w-6 text-center text-sm font-semibold">{item.qty}</span>
-        <button
-          onClick={() => addItem(item)}
-          className="w-7 h-7 rounded-full bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-700 font-bold cursor-pointer"
-        >
-          +
-        </button>
+          <Trash />
+        </Button>
       </div>
-      <div className="text-right min-w-[80px]">
-        <p className="text-sm font-semibold text-gray-900">
-          {formatRupiah(item.price_sell * item.qty)}
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => decreaseQty(item.id)}
+            variant="ghost"
+            size="icon"
+            className="rounded-full hover:bg-primary"
+          >
+            <CircleMinus />
+          </Button>
+          <span className="w-6 text-center text-sm font-semibold">{item.qty}</span>
+          <Button
+            onClick={() => addItem(item)}
+            variant="ghost"
+            size="icon"
+            className="rounded-full hover:bg-primary"
+          >
+            <CirclePlus />
+          </Button>
+        </div>
+        <div className="text-right min-w-[80px]">
+          <p className="text-sm font-semibold text-gray-900">
+            {formatRupiah(item.price_sell * item.qty)}
+          </p>
+        </div>
       </div>
-      <button
-        onClick={() => removeItem(item.id)}
-        className="text-red-400 hover:text-red-600 text-lg cursor-pointer ml-1"
-      >
-        &times;
-      </button>
     </div>
   )
 }
@@ -52,7 +63,7 @@ function Cart({ onCheckout }: { onCheckout: () => void }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 7h12.8M7 13L5.4 5M17 21a1 1 0 100-2 1 1 0 000 2zm-10 0a1 1 0 100-2 1 1 0 000 2z" />
         </svg>
         <p className="text-sm">Keranjang kosong</p>
-        <p className="text-xs mt-1">Scan produk untuk mulai transaksi</p>
+        <p className="text-xs mt-1">Tambah atau Scan produk untuk mulai transaksi</p>
       </div>
     )
   }

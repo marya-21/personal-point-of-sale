@@ -1,34 +1,56 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(0 0% 3.6%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(0 0% 3.6%);
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(0 0% 3.6%);
-  --color-primary: hsl(221 83% 53%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(0 0% 96.1%);
-  --color-secondary-foreground: hsl(0 0% 9%);
-  --color-muted: hsl(0 0% 89.8%);
-  --color-muted-foreground: hsl(0 0% 45.1%);
-  --color-accent: hsl(0 0% 9%);
-  --color-accent-foreground: hsl(0 0% 100%);
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(0 0% 89.8%);
-  --color-input: hsl(0 0% 89.8%);
-  --color-ring: hsl(0 0% 3.6%);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+}
 
-  --color-success: hsl(142 72% 29%);
-  --color-success-light: hsl(142 72% 90%);
-  --color-warning: hsl(38 92% 50%);
-  --color-warning-light: hsl(38 92% 90%);
-
-  --radius-lg: 0.5rem;
-  --radius-md: calc(0.5rem - 2px);
-  --radius-sm: calc(0.5rem - 4px);
+:root {
+  --radius: 0.625rem;
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 3.6%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 3.6%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 3.6%);
+  --primary: hsl(221 83% 53%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(0 0% 96.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 89.8%);
+  --muted-foreground: hsl(0 0% 45.1%);
+  --accent: hsl(0 0% 9%);
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 89.8%);
+  --input: hsl(0 0% 89.8%);
+  --ring: hsl(0 0% 3.6%);
+  --success: hsl(142 47.4% 48.8%);
+  --success-light: hsl(142 47.4% 90%);
+  --warning: hsl(48 100% 67.8%);
+  --warning-light: hsl(48 100% 90%);
 }
 
 .dash-underline-tooltip {

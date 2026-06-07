@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { usePermission } from "../hooks/useAuth";
+import { CirclePlus } from "lucide-react";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
@@ -298,13 +299,9 @@ function Cashier() {
                     </span>
                   </p>
                 </div>
-                <button
-                  onClick={() => addItem(product)}
-                  disabled={product.stock === 0}
-                  className="ml-3 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white text-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors shrink-0"
-                >
-                  +
-                </button>
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary" onClick={() => addItem(product)} disabled={product.stock === 0}>
+                  <CirclePlus />
+                </Button>
               </div>
             ))
           )}
