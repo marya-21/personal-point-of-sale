@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SquarePen, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../services/supabase";
 import {
@@ -22,6 +23,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth, usePermission } from "../hooks/useAuth";
 import { Product } from "@/types";
 
@@ -373,53 +382,41 @@ function Inventory() {
                   <p>Tidak ada produk ditemukan</p>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Produk
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Barcode
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        H. Pokok
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        H. Jual
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Stok
-                      </th>
-                      {canManage && <th className="py-3 px-4" />}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produk</TableHead>
+                      <TableHead>Barcode</TableHead>
+                      <TableHead className="text-right">H. Pokok</TableHead>
+                      <TableHead className="text-right">H. Jual</TableHead>
+                      <TableHead className="text-right">Stok</TableHead>
+                      {canManage && <TableHead />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filtered.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="py-3 px-4">
+                      <TableRow key={product.id}>
+                        <TableCell>
                           <p className="font-medium text-gray-900">
                             {product.name}
                           </p>
-                        </td>
-                        <td className="py-3 px-4">
+                        </TableCell>
+                        <TableCell>
                           <span className="text-sm text-gray-500 font-mono">
                             {product.barcode}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           <span className="text-sm font-semibold text-gray-900">
                             {formatRupiah(product.price_cost || 0)}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           <span className="text-sm font-semibold text-gray-900">
                             {formatRupiah(product.price_sell)}
                           </span>
-                        </td>
-
-
-                        <td className="py-3 px-4 text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           <span
                             className={`text-sm font-semibold ${product.stock === 0
                               ? "text-red-600"
@@ -430,36 +427,39 @@ function Inventory() {
                           >
                             {product.stock}
                           </span>
-                        </td>
+                        </TableCell>
                         {canManage && (
-                          <td className="py-3 px-4">
+                          <TableCell>
                             <div className="flex gap-2 justify-end">
                               {canEdit && (
                                 <Button
-                                  variant="ghost"
-                                  className="text-sm py-1 px-3"
                                   onClick={() => handleEdit(product)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-primary hover:text-muted hover:bg-primary rounded-full"
+                                  disabled={deleteMutation.isPending}
                                 >
-                                  Edit
+                                  <SquarePen />
                                 </Button>
                               )}
                               {canDelete && (
                                 <Button
-                                  variant="destructive"
-                                  className="text-sm py-1 px-3"
                                   onClick={() => handleDelete(product)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-muted hover:bg-destructive rounded-full"
                                   disabled={deleteMutation.isPending}
                                 >
-                                  Hapus
+                                  <Trash />
                                 </Button>
                               )}
                             </div>
-                          </td>
+                          </TableCell>
                         )}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               )}
             </div>
           </div>
@@ -478,7 +478,7 @@ function Inventory() {
       </div>
 
       <Dialog open={showModal} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-md ">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
