@@ -246,6 +246,7 @@ function Inventory() {
   const canCreate = usePermission("create_product");
   const canEdit = usePermission("edit_product");
   const canDelete = usePermission("delete_product");
+  const canEditPrice = usePermission("edit_product_price");
   const canManage = canEdit || canDelete;
 
   // Use service hooks
@@ -489,6 +490,7 @@ function Inventory() {
             onSubmit={handleSubmit}
             isPending={isPending}
             onCancel={handleCloseModal}
+            canEditPrice={canEditPrice}
           />
           {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
         </DialogContent>

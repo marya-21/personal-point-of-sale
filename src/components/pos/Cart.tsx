@@ -1,6 +1,6 @@
 import { CircleMinus, CirclePlus, Trash } from 'lucide-react'
-import useCartStore from '../../store/useCartStore'
-import { formatRupiah } from '../../utils/formatCurrency'
+import useCartStore from '@/store/useCartStore'
+import { formatRupiah } from '@/utils/formatCurrency'
 import { Button } from '@/ui/button'
 
 function CartItem({ item }: { item: any }) {
