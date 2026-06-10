@@ -17,7 +17,13 @@ import { Product, ProductUnit } from "@/types";
 interface ProductFormProps {
   initialData?: Product;
   onCancel: () => void;
-  onSubmit: (data: Product & { units: ProductUnit[]; stock_unit_id: string; total_purchase_cost?: number }) => void;
+  onSubmit: (data: {
+    p_name: string;
+    p_total_harga_beli: number | null;
+    p_qty_input: number;
+    p_stock_unit_name: string;
+    p_units: string;
+  }) => void;
   isPending?: boolean;
   canEditPrice?: boolean;
 }
@@ -58,7 +64,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
 
   const [stockUnitId, setStockUnitId] = useState<string>("temp-1");
 
-  const stock_qty = watch("stock") || 0;
+  const stock_qty = Number(watch("stock")) || 0;
   const total_purchase_cost = parseInt(totalPurchaseCostDisplay.replace(/[^0-9]/g, "")) || 0;
 
   const selectedStockUnit = units.find(u => u.id === stockUnitId) ?? units[0];
@@ -152,12 +158,23 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     if (!validateUnits()) {
       return;
     }
-    // Kirim data produk + units + unit referensi untuk stok awal + total harga beli
+
+    const selectedUnitName = selectedStockUnit.name || "";
+    const unitsPayload = units.map(u => ({
+      name: u.name,
+      conversion: u.conversion,
+      is_base: u.is_base,
+      barcode: u.barcode,
+      price_sell: u.price_sell,
+    }));
+
+    // Kirim data produk dalam format RPC
     onSubmit({
-      ...data,
-      units,
-      stock_unit_id: stockUnitId,
-      ...(canEditPrice && total_purchase_cost > 0 && { total_purchase_cost }),
+      p_name: data.name,
+      p_total_harga_beli: canEditPrice && total_purchase_cost > 0 ? total_purchase_cost : null,
+      p_qty_input: stock_qty,
+      p_stock_unit_name: selectedUnitName,
+      p_units: JSON.stringify(unitsPayload),
     } as any);
   });
 

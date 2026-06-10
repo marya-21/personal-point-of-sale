@@ -1,11 +1,16 @@
 // src/services/productService.js
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Product } from "@/types";
-import { createOrUpdateProductWithAudit } from "./marginService";
 import { supabase } from "./supabase";
 
-type ProductMutationPayload = Product & {
+type ProductMutationPayload = {
   userId: string;
+  p_name: string;
+  p_total_harga_beli: number | null;
+  p_qty_input: number;
+  p_stock_unit_name: string;
+  p_units: string;
+  id?: string; // For updates
   reason?: string;
 };
 
@@ -73,23 +78,24 @@ export const useProduct = (productId: string | null) => {
 };
 
 /**
- * Create product dengan audit
+ * Create product dengan RPC
  */
 export const useCreateProduct = () => {
   const queryClient = useQueryClient();
 
   return useMutation<any, Error, Omit<ProductMutationPayload, "id">>({
     mutationFn: async (payload) => {
-      const { userId, ...productData } = payload;
+      const { userId, ...rpcData } = payload;
       if (!userId) throw new Error("User not authenticated");
 
-      const result = await createOrUpdateProductWithAudit(productData, userId);
+      const { data, error } = await supabase.rpc("create_product_with_units", {
+        p_user_id: userId,
+        ...rpcData,
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || "Failed to create product");
-      }
+      if (error) throw error;
 
-      return result.data;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
@@ -98,27 +104,32 @@ export const useCreateProduct = () => {
 };
 
 /**
- * Update product dengan audit
+ * Update product dengan RPC
  */
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
 
   return useMutation<any, Error, ProductMutationPayload>({
     mutationFn: async (payload) => {
-      const { userId, ...productData } = payload;
+      const { userId, id, ...rpcData } = payload;
       if (!userId) throw new Error("User not authenticated");
+      if (!id) throw new Error("Product ID is required for update");
 
-      const result = await createOrUpdateProductWithAudit(productData, userId);
+      const { data, error } = await supabase.rpc("update_product_with_units", {
+        p_id: id,
+        p_user_id: userId,
+        ...rpcData,
+      });
 
-      if (!result.success) {
-        throw new Error(result.error || "Failed to update product");
-      }
+      if (error) throw error;
 
-      return result.data;
+      return data;
     },
     onSuccess: (_, productData) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["product", productData.id] });
+      if (productData.id) {
+        queryClient.invalidateQueries({ queryKey: ["product", productData.id] });
+      }
     },
   });
 };

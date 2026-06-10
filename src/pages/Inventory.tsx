@@ -286,7 +286,13 @@ function Inventory() {
     toast.success(message);
   };
 
-  const handleSubmit = (data: Product) => {
+  const handleSubmit = (data: {
+    p_name: string;
+    p_total_harga_beli: number | null;
+    p_qty_input: number;
+    p_stock_unit_name: string;
+    p_units: string;
+  }) => {
     const userId = user?.id;
     if (!userId) return;
 
