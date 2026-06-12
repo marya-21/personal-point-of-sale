@@ -7,7 +7,7 @@ export interface Product {
   price_cost: number
 }
 
-export interface CartItem extends Product {
+export interface CartItem extends ProductUnit {
   qty: number
 }
 
@@ -34,12 +34,12 @@ export interface ProductUnit {
   is_base: boolean;
   barcode: string;
   price_sell: number;
-  readonly hpp_derived: number;
-  readonly margin_rp: number;
-  readonly margin_pct: number;
 }
 export interface ProductV2 {
-   name: string;
-  price_cost: number;      // HPP base — visible jika canEditHpp
+  name: string;
+  price_cost: number;  
+  barcode: string; // !Temporary
+  price_sell: number; // !Temporary
+  stock: number; 
   units: ProductUnit[];
 }

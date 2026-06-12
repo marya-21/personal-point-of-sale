@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form"
 import { Trash } from "lucide-react";
-import { formatRupiah, formatNumber, } from "@/utils/formatCurrency";
+import { formatNumber, } from "@/utils/formatCurrency";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import {
@@ -12,10 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/ui/table";
-import { Product, ProductUnit } from "@/types";
+import { ProductV2, ProductUnit } from "@/types";
 
 interface ProductFormProps {
-  initialData?: Product;
+  initialData?: ProductV2;
   onCancel: () => void;
   onSubmit: (data: {
     p_name: string;
@@ -30,8 +30,8 @@ interface ProductFormProps {
 
 //  Form for create/edit product with margin calculation
 function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice }: ProductFormProps) {
-  const { control, handleSubmit, watch } = useForm<Product>({
-    defaultValues: initialData || {
+  const { control, handleSubmit, watch } = useForm<any>({
+    defaultValues: initialData ? initialData : {
       barcode: "",
       name: "",
       price_cost: 0,
@@ -39,14 +39,6 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       stock: 0,
     },
   });
-
-  const [costPriceDisplay, setCostPriceDisplay] = useState(
-    initialData?.price_cost ? formatNumber(initialData.price_cost) : ""
-  );
-  const [priceDisplay, setPriceDisplay] = useState(
-    initialData?.price_sell ? formatNumber(initialData.price_sell) : ""
-  );
-  const [totalPurchaseCostDisplay, setTotalPurchaseCostDisplay] = useState("");
 
   const [units, setUnits] = useState<ProductUnit[]>([
     {
@@ -56,32 +48,23 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       is_base: true,
       barcode: initialData?.barcode || "",
       price_sell: initialData?.price_sell || 0,
-      hpp_derived: initialData?.price_cost || 0,
-      margin_rp: 0,
-      margin_pct: 0,
     },
   ]);
 
   const [stockUnitId, setStockUnitId] = useState<string>("temp-1");
 
   const stock_qty = Number(watch("stock")) || 0;
-  const total_purchase_cost = parseInt(totalPurchaseCostDisplay.replace(/[^0-9]/g, "")) || 0;
+  const total_purchase_cost = Number(watch("price_cost")) || 0;
 
   const selectedStockUnit = units.find(u => u.id === stockUnitId) ?? units[0];
   const baseUnit = units.find(u => u.is_base) ?? units[0];
   const baseQtyPreview = stock_qty * selectedStockUnit.conversion;
 
-  // Total Harga Beli previews
-  const costPerSelectedUnit = stock_qty > 0 ? total_purchase_cost / stock_qty : 0;
-  const costPerBaseUnit = stock_qty > 0 && selectedStockUnit.conversion > 0
-    ? total_purchase_cost / (stock_qty * selectedStockUnit.conversion)
-    : 0;
-
-
   const handleUnitChange = (index: number, field: keyof ProductUnit, value: any) => {
     const newUnits = [...units];
     newUnits[index] = { ...newUnits[index], [field]: value };
     setUnits(newUnits);
+    setUnitErrors("");
   };
 
   const handleAddUnit = () => {
@@ -92,9 +75,6 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       is_base: false,
       barcode: "",
       price_sell: 0,
-      hpp_derived: 0,
-      margin_rp: 0,
-      margin_pct: 0,
     };
     setUnits([...units, newUnit]);
   };
@@ -155,6 +135,11 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   };
 
   const handleFormSubmit = handleSubmit((data) => {
+    if (canEditPrice && total_purchase_cost <= 0) {
+      setUnitErrors("Total Harga Beli harus diisi");
+      return;
+    }
+
     if (!validateUnits()) {
       return;
     }
@@ -340,24 +325,30 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       </div>
       {canEditPrice && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Total Harga Beli (Rp)</label>
-          <input
-            type="text"
-            value={totalPurchaseCostDisplay}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^0-9]/g, "");
-              setTotalPurchaseCostDisplay(raw ? formatNumber(parseInt(raw)) : "");
-            }}
-            inputMode="numeric"
-            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="Contoh: 480.000"
+          <Controller
+            name="price_cost"
+            control={control}
+            rules={{ required: "Field wajib diisi" }}
+            render={({ field, fieldState }) =>
+              <>
+                <Input
+                  label="Total Harga Beli"
+                  type="text"
+                  inputMode="numeric"
+                  value={field.value ? formatNumber(field.value) : ""}
+                  required
+                  placeholder="Contoh: 480.000"
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    field.onChange(raw ? parseInt(raw) : 0);
+                  }}
+                />
+                {fieldState.error && (
+                  <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
+                )}
+              </>
+            }
           />
-          {total_purchase_cost > 0 && stock_qty > 0 && (
-            <div className="text-xs text-gray-600 mt-2 space-y-1">
-              <p>= {formatRupiah(costPerSelectedUnit)} / {selectedStockUnit.name || "..."}</p>
-              <p>= {formatRupiah(costPerBaseUnit)} / {baseUnit.name} (satuan dasar)</p>
-            </div>
-          )}
         </div>
       )}
       <div className="flex gap-3 pt-2">
