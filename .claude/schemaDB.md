@@ -707,4 +707,118 @@ BEGIN
 END;
 ```
 
+### create_product_with_units
+``` sql
+DECLARE
+  v_product_id    uuid;
+  v_conversion    numeric;
+  v_price_cost    numeric;
+  v_stock_base    numeric;
+  v_barcode       text;
+  v_units_json    jsonb;
+  v_unit          jsonb;
+BEGIN
+  v_units_json := p_units::jsonb;
+
+  -- VALIDASI
+  IF p_name IS NULL OR p_name = '' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Nama produk tidak boleh kosong'
+    );
+  END IF;
+
+  IF p_qty_input IS NULL OR p_qty_input <= 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Qty harus lebih besar dari 0'
+    );
+  END IF;
+
+  IF p_total_harga_beli IS NULL OR p_total_harga_beli <= 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Total harga beli harus lebih besar dari 0'
+    );
+  END IF;
+
+  IF p_stock_unit_name IS NULL OR p_stock_unit_name = '' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Pilih satuan untuk stok awal'
+    );
+  END IF;
+
+  -- 1. Ambil barcode dari base unit
+  SELECT NULLIF(u->>'barcode', '') INTO v_barcode
+  FROM jsonb_array_elements(v_units_json) u
+  WHERE (u->>'is_base')::boolean = true;
+
+  -- 2. Ambil konversi dari unit yang dipilih
+  SELECT (u->>'conversion')::numeric INTO v_conversion
+  FROM jsonb_array_elements(v_units_json) u
+  WHERE u->>'name' = p_stock_unit_name;
+
+  IF v_conversion IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Unit ' || p_stock_unit_name || ' tidak ditemukan'
+    );
+  END IF;
+
+  -- 3. Hitung stok base dan HPP base
+  v_stock_base := p_qty_input * v_conversion;
+  v_price_cost := ROUND(p_total_harga_beli / v_stock_base, 2);
+
+  -- 4. Insert produk
+  v_product_id := gen_random_uuid();
+  INSERT INTO products (id, name, price_cost, stock, barcode)
+  VALUES (v_product_id, p_name, v_price_cost, v_stock_base, v_barcode);
+
+  -- 5. Insert units
+  FOR v_unit IN SELECT jsonb_array_elements(v_units_json)
+  LOOP
+    INSERT INTO product_units (
+      product_id, name, conversion, is_base,
+      barcode, price_sell
+    ) VALUES (
+      v_product_id,
+      v_unit->>'name',
+      (v_unit->>'conversion')::numeric,
+      COALESCE((v_unit->>'is_base')::boolean, false),
+      NULLIF(v_unit->>'barcode', ''),
+      (v_unit->>'price_sell')::numeric
+    );
+  END LOOP;
+
+  -- 6. Insert price history
+  INSERT INTO product_price_history (
+    product_id, old_price_cost, new_price_cost,
+    changed_by, reason, change_type
+  ) VALUES (
+    v_product_id, NULL, v_price_cost,
+    p_user_id, 'Initial product creation', 'initial_create'
+  );
+
+  -- 7. Insert audit log
+  INSERT INTO audit_logs (user_id, action, resource_type, resource_id, new_value)
+  VALUES (
+    p_user_id, 'create_product', 'products', v_product_id,
+    jsonb_build_object(
+      'name', p_name,
+      'price_cost_base', v_price_cost,
+      'stock_base', v_stock_base
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'product_id', v_product_id,
+    'success', true,
+    'price_cost_base', v_price_cost,
+    'stock_base', v_stock_base
+  );
+END;
+```
+
+
 
