@@ -41,5 +41,5 @@ export interface ProductV2 {
   barcode: string; // !Temporary
   price_sell: number; // !Temporary
   stock: number; 
-  units: ProductUnit[];
+  product_units: ProductUnit[];
 }

@@ -28,7 +28,8 @@ function CartItem({ item }: { item: any }) {
             onClick={() => decreaseQty(item.id)}
             variant="ghost"
             size="icon"
-            className="rounded-full hover:bg-primary"
+            className="rounded-full hover:bg-secondary hover:text-secondary-foreground"
+            title="Kurangi"
           >
             <CircleMinus />
           </Button>
@@ -37,7 +38,9 @@ function CartItem({ item }: { item: any }) {
             onClick={() => addItem(item)}
             variant="ghost"
             size="icon"
-            className="rounded-full hover:bg-primary"
+            className="rounded-full hover:bg-secondary hover:text-secondary-foreground"
+            title="Tambah"
+
           >
             <CirclePlus />
           </Button>

@@ -40,14 +40,14 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     },
   });
 
-  const [units, setUnits] = useState<ProductUnit[]>([
+  const [units, setUnits] = useState<ProductUnit[]>(initialData ? initialData.product_units : [
     {
       id: "temp-1",
       name: "",
       conversion: 1,
       is_base: true,
-      barcode: initialData?.barcode || "",
-      price_sell: initialData?.price_sell || 0,
+      barcode: "",
+      price_sell: 0,
     },
   ]);
 
@@ -276,6 +276,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
           </div>
         )}
       </div>
+      {/* Stock */}
       <div>
         <div className="flex gap-3 items-end">
           <div className="flex-1">

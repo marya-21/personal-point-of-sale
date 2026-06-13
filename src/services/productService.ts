@@ -156,3 +156,54 @@ export const useDeleteProduct = () => {
     },
   });
 };
+
+/**
+ * Fetch list untuk tabel
+ */
+export async function fetchProductsList() {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      id,
+      name,
+      stock,
+      price_cost,
+      product_units(id, name, conversion, is_base, price_sell)
+    `)
+    .order('name', { ascending: true })
+
+  if (error) throw error
+
+  // Transform: ambil base unit info
+  return data.map(p => {
+    const baseUnit = p.product_units.find(u => u.is_base)
+    return {
+      id: p.id,
+      name: p.name,
+      stock: p.stock,
+      price_cost: p.price_cost,
+      base_unit_name: baseUnit?.name || '',
+      price_sell_base: baseUnit?.price_sell || 0
+    }
+  })
+}
+
+/**
+ * Fetch detail untuk edit modal
+ */
+export async function fetchProductDetail(productId: string) {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      id,
+      name,
+      stock,
+      price_cost,
+      product_units(id, name, conversion, is_base, barcode, price_sell)
+    `)
+    .eq('id', productId)
+    .single()
+
+  if (error) throw error
+  return data
+}

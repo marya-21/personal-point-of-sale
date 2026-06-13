@@ -5,11 +5,11 @@ import useCartStore from "../store/useCartStore";
 import { formatRupiah, formatNumber } from "../utils/formatCurrency";
 import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
 import { usePermission } from "../hooks/useAuth";
-import { CirclePlus } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
@@ -299,8 +299,8 @@ function Cashier() {
                     </span>
                   </p>
                 </div>
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary" onClick={() => addItem(product)} disabled={product.stock === 0}>
-                  <CirclePlus />
+                <Button variant="primary" size="icon" className="rounded-full" onClick={() => addItem(product)} disabled={product.stock === 0} title="Tambah ke keranjang">
+                  <ShoppingCart />
                 </Button>
               </div>
             ))

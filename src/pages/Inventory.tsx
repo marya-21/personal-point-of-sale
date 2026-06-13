@@ -7,13 +7,14 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
-  useProducts,
+  fetchProductsList,
+  fetchProductDetail,
 } from "../services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "../components/inventory/ProductForm";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth, usePermission } from "../hooks/useAuth";
-import { Product } from "@/types";
+import { Product, ProductV2 } from "@/types";
 
 type TopSellingItem = {
   name: string;
@@ -238,9 +239,9 @@ function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowS
 
 function Inventory() {
   const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ProductV2 | null>(null);
   const [search, setSearch] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const { user } = useAuth();
   const canCreate = usePermission("create_product");
@@ -250,7 +251,11 @@ function Inventory() {
   const canManage = canEdit || canDelete;
 
   // Use service hooks
-  const { data: products = [], isLoading } = useProducts();
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["products-list"],
+    queryFn: fetchProductsList,
+    staleTime: 5 * 60 * 1000,
+  });
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
@@ -261,9 +266,14 @@ function Inventory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setShowModal(true);
+  const handleEdit = async (productId: string) => {
+    try {
+      const detail = await fetchProductDetail(productId);
+      setEditingProduct(detail as any);
+      setShowModal(true);
+    } catch (error) {
+      toast.error("Gagal memuat detail produk");
+    }
   };
 
   const handleAdd = () => {
@@ -319,8 +329,8 @@ function Inventory() {
     }
   };
 
-  const handleDelete = (product: Product) => {
-    setDeleteConfirm(product);
+  const handleDelete = (productId: string, productName: string) => {
+    setDeleteConfirm({ id: productId, name: productName });
   };
 
   const handleConfirmDelete = () => {
@@ -336,17 +346,16 @@ function Inventory() {
 
   const filtered = products.filter(
     (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.barcode.includes(search),
+      p.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const outOfStock = products
     .filter((p) => p.stock === 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name)) as any as Product[];
 
   const lowStock = products
     .filter((p) => p.stock > 0 && p.stock < LOW_STOCK_THRESHOLD)
-    .sort((a, b) => a.stock - b.stock);
+    .sort((a, b) => a.stock - b.stock) as any as Product[];
 
   const isPending = createMutation.isPending || updateMutation.isPending;
   const isError = createMutation.isError || updateMutation.isError;
@@ -393,10 +402,9 @@ function Inventory() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Produk</TableHead>
-                      <TableHead>Barcode</TableHead>
-                      <TableHead className="text-right">H. Pokok</TableHead>
-                      <TableHead className="text-right">H. Jual</TableHead>
+                      <TableHead className="text-right">Harga Jual</TableHead>
                       <TableHead className="text-right">Stok</TableHead>
+                      <TableHead className="text-right">Base Unit</TableHead>
                       {canManage && <TableHead />}
                     </TableRow>
                   </TableHeader>
@@ -408,19 +416,9 @@ function Inventory() {
                             {product.name}
                           </p>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-500 font-mono">
-                            {product.barcode}
-                          </span>
-                        </TableCell>
                         <TableCell className="text-right">
                           <span className="text-sm font-semibold text-gray-900">
-                            {formatRupiah(product.price_cost || 0)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="text-sm font-semibold text-gray-900">
-                            {formatRupiah(product.price_sell)}
+                            {formatRupiah(product.price_sell_base)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
@@ -435,12 +433,17 @@ function Inventory() {
                             {product.stock}
                           </span>
                         </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {product.base_unit_name}
+                          </span>
+                        </TableCell>
                         {canManage && (
                           <TableCell>
                             <div className="flex gap-2 justify-end">
                               {canEdit && (
                                 <Button
-                                  onClick={() => handleEdit(product)}
+                                  onClick={() => handleEdit(product.id)}
                                   variant="ghost"
                                   size="icon"
                                   className="text-primary hover:text-muted hover:bg-primary rounded-full"
@@ -451,7 +454,7 @@ function Inventory() {
                               )}
                               {canDelete && (
                                 <Button
-                                  onClick={() => handleDelete(product)}
+                                  onClick={() => handleDelete(product.id, product.name)}
                                   variant="ghost"
                                   size="icon"
                                   className="text-destructive hover:text-muted hover:bg-destructive rounded-full"
