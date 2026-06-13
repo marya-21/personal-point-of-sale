@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SquarePen, Trash } from "lucide-react";
+import { SquarePen, Trash, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../services/supabase";
 import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useRestockProduct,
   fetchProductsList,
   fetchProductDetail,
 } from "../services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "../components/inventory/ProductForm";
+import RestockForm from "../components/inventory/RestockForm";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -240,6 +242,7 @@ function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowS
 function Inventory() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductV2 | null>(null);
+  const [restockingProduct, setRestockingProduct] = useState<(ProductV2 & { id: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -259,6 +262,7 @@ function Inventory() {
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
+  const restockMutation = useRestockProduct();
 
   const { data: topSelling = [] } = useQuery({
     queryKey: ["top-selling"],
@@ -342,6 +346,35 @@ function Inventory() {
         },
       });
     }
+  };
+
+  const handleRestock = async (productId: string) => {
+    try {
+      const detail = await fetchProductDetail(productId);
+      setRestockingProduct(detail as any);
+    } catch (error) {
+      toast.error("Gagal memuat detail produk");
+    }
+  };
+
+  const handleRestockSubmit = (data: {
+    p_id: string;
+    p_qty_input: number;
+    p_stock_unit_name: string;
+    p_total_harga_beli: number | null;
+  }) => {
+    const userId = user?.id;
+    if (!userId) return;
+
+    restockMutation.mutate(
+      { ...data, p_user_id: userId },
+      {
+        onSuccess: () => {
+          toast.success("Stok berhasil ditambahkan");
+          setRestockingProduct(null);
+        },
+      },
+    );
   };
 
   const filtered = products.filter(
@@ -443,11 +476,22 @@ function Inventory() {
                             <div className="flex gap-2 justify-end">
                               {canEdit && (
                                 <Button
+                                  onClick={() => handleRestock(product.id)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-blue-600 hover:text-muted hover:bg-blue-600 rounded-full"
+                                  disabled={restockMutation.isPending || deleteMutation.isPending}
+                                >
+                                  <PackagePlus size={18} />
+                                </Button>
+                              )}
+                              {canEdit && (
+                                <Button
                                   onClick={() => handleEdit(product.id)}
                                   variant="ghost"
                                   size="icon"
                                   className="text-primary hover:text-muted hover:bg-primary rounded-full"
-                                  disabled={deleteMutation.isPending}
+                                  disabled={restockMutation.isPending || deleteMutation.isPending}
                                 >
                                   <SquarePen />
                                 </Button>
@@ -458,7 +502,7 @@ function Inventory() {
                                   variant="ghost"
                                   size="icon"
                                   className="text-destructive hover:text-muted hover:bg-destructive rounded-full"
-                                  disabled={deleteMutation.isPending}
+                                  disabled={restockMutation.isPending || deleteMutation.isPending}
                                 >
                                   <Trash />
                                 </Button>
@@ -502,6 +546,23 @@ function Inventory() {
             canEditPrice={canEditPrice}
           />
           {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={restockingProduct !== null} onOpenChange={() => setRestockingProduct(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Restock: {restockingProduct?.name}</DialogTitle>
+          </DialogHeader>
+          {restockingProduct && (
+            <RestockForm
+              product={restockingProduct}
+              onCancel={() => setRestockingProduct(null)}
+              onSubmit={handleRestockSubmit}
+              isPending={restockMutation.isPending}
+              canEditPrice={canEditPrice}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

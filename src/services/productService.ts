@@ -158,6 +158,32 @@ export const useDeleteProduct = () => {
 };
 
 /**
+ * Restock product
+ */
+export const useRestockProduct = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, Error, {
+    p_id: string;
+    p_user_id: string;
+    p_qty_input: number;
+    p_stock_unit_name: string;
+    p_total_harga_beli: number | null;
+  }>({
+    mutationFn: async (data) => {
+      const { error } = await supabase.rpc("restock_product", data);
+      if (error) throw error;
+      return { success: true };
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["products-list"] });
+      queryClient.invalidateQueries({ queryKey: ["product", vars.p_id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+};
+
+/**
  * Fetch list untuk tabel
  */
 export async function fetchProductsList() {

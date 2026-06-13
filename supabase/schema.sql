@@ -201,6 +201,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 4b. Function untuk restock (menambah stok)
+CREATE OR REPLACE FUNCTION restock_product(
+  p_id UUID,
+  p_user_id TEXT,
+  p_qty_input NUMERIC,
+  p_stock_unit_name TEXT,
+  p_total_harga_beli NUMERIC DEFAULT NULL
+)
+RETURNS void AS $$
+DECLARE
+  v_unit_conversion NUMERIC;
+  v_base_qty NUMERIC;
+BEGIN
+  -- Cari conversion dari unit yang dipilih
+  SELECT conversion INTO v_unit_conversion
+  FROM product_units
+  WHERE product_id = p_id AND name = p_stock_unit_name;
+
+  IF v_unit_conversion IS NULL THEN
+    v_unit_conversion := 1;
+  END IF;
+
+  v_base_qty := p_qty_input * v_unit_conversion;
+
+  -- Update stok dan opsional harga beli
+  UPDATE products
+  SET
+    stock = stock + v_base_qty,
+    price_cost = COALESCE(p_total_harga_beli, price_cost),
+    updated_at = now()
+  WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 5. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
