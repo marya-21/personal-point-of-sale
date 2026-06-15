@@ -36,6 +36,7 @@ export interface ProductUnit {
   price_sell: number;
 }
 export interface ProductV2 {
+  id: string;
   name: string;
   price_cost: number;  
   barcode: string; // !Temporary

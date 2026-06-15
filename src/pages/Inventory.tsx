@@ -479,8 +479,9 @@ function Inventory() {
                                   onClick={() => handleRestock(product.id)}
                                   variant="ghost"
                                   size="icon"
-                                  className="text-blue-600 hover:text-muted hover:bg-blue-600 rounded-full"
+                                  className="text-primary hover:text-muted hover:bg-primary rounded-full"
                                   disabled={restockMutation.isPending || deleteMutation.isPending}
+                                  title="Tambah stok"
                                 >
                                   <PackagePlus size={18} />
                                 </Button>
@@ -492,6 +493,7 @@ function Inventory() {
                                   size="icon"
                                   className="text-primary hover:text-muted hover:bg-primary rounded-full"
                                   disabled={restockMutation.isPending || deleteMutation.isPending}
+                                  title="Edit produk"
                                 >
                                   <SquarePen />
                                 </Button>
@@ -503,6 +505,7 @@ function Inventory() {
                                   size="icon"
                                   className="text-destructive hover:text-muted hover:bg-destructive rounded-full"
                                   disabled={restockMutation.isPending || deleteMutation.isPending}
+                                  title="Hapus produk"
                                 >
                                   <Trash />
                                 </Button>

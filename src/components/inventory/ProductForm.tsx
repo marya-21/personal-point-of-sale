@@ -28,6 +28,9 @@ interface ProductFormProps {
   canEditPrice?: boolean;
 }
 
+const toTitleCase = (str: string) =>
+  str.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
 //  Form for create/edit product with margin calculation
 function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice }: ProductFormProps) {
   const isEditMode = !!initialData;
@@ -116,7 +119,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     }
 
     // Cek nama unit tidak duplikat
-    const unitNames = units.map(u => u.name.trim()).filter(n => n);
+    const unitNames = units.map(u => u.name.trim().toLowerCase()).filter(n => n);
     const uniqueNames = new Set(unitNames);
     if (unitNames.length !== uniqueNames.size) {
       setUnitErrors("Nama satuan tidak boleh duplikat.");
@@ -152,14 +155,14 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     if (isEditMode) {
       // Edit mode: submit with minimal data
       const unitsPayload = units.map(u => ({
-        name: u.name,
+        name: toTitleCase(u.name),
         conversion: u.conversion,
         is_base: u.is_base,
         barcode: u.barcode,
         price_sell: u.price_sell,
       }));
 
-      const baseUnitName = baseUnit.name || "";
+      const baseUnitName = toTitleCase(baseUnit.name || "");
       onSubmit({
         p_name: data.name,
         p_total_harga_beli: null,
@@ -178,9 +181,9 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
         return;
       }
 
-      const selectedUnitName = selectedStockUnit.name || "";
+      const selectedUnitName = toTitleCase(selectedStockUnit.name || "");
       const unitsPayload = units.map(u => ({
-        name: u.name,
+        name: toTitleCase(u.name),
         conversion: u.conversion,
         is_base: u.is_base,
         barcode: u.barcode,
