@@ -235,6 +235,85 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 4c. Function untuk update produk dengan unit (menambah stok)
+CREATE FUNCTION update_product_with_units(
+  p_product_id        uuid,
+  p_name              text,
+  p_units_to_upsert   text,
+  p_units_to_delete   text,
+  p_user_id           uuid
+) 
+RETURNS jsonb 
+LANGUAGE plpgsql 
+AS $$
+DECLARE
+  v_unit jsonb;
+BEGIN
+  -- VALIDASI
+  IF p_name IS NULL OR p_name = '' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Nama produk tidak boleh kosong'
+    );
+  END IF;
+
+  -- 1. Update nama produk
+  UPDATE products
+  SET name = p_name, updated_at = now()
+  WHERE id = p_product_id;
+
+  -- 2. Upsert units
+  FOR v_unit IN SELECT jsonb_array_elements(p_units_to_upsert::jsonb)
+  LOOP
+    IF (v_unit->>'id') IS NOT NULL AND (v_unit->>'id') != '' THEN
+      -- Update existing
+      UPDATE product_units
+      SET 
+        name = v_unit->>'name',
+        conversion = (v_unit->>'conversion')::numeric,
+        barcode = NULLIF(v_unit->>'barcode', ''),
+        price_sell = (v_unit->>'price_sell')::numeric,
+        updated_at = now()
+      WHERE id = (v_unit->>'id')::uuid;
+    ELSE
+      -- Insert new
+      INSERT INTO product_units (
+        product_id, name, conversion, is_base,
+        barcode, price_sell
+      ) VALUES (
+        p_product_id,
+        v_unit->>'name',
+        (v_unit->>'conversion')::numeric,
+        false,
+        NULLIF(v_unit->>'barcode', ''),
+        (v_unit->>'price_sell')::numeric
+      );
+    END IF;
+  END LOOP;
+
+  -- 3. Soft delete units
+  FOR v_unit IN SELECT jsonb_array_elements(p_units_to_delete::jsonb)
+  LOOP
+    UPDATE product_units
+    SET is_deleted = true, updated_at = now()
+    WHERE id = (v_unit->>'id')::uuid;
+  END LOOP;
+
+  -- 4. Audit log
+  INSERT INTO audit_logs (user_id, action, resource_type, resource_id, new_value)
+  VALUES (
+    p_user_id, 'update_product', 'products', p_product_id,
+    jsonb_build_object('name', p_name)
+  );
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'product_id', p_product_id
+  );
+END;
+$$;
+$$ LANGUAGE plpgsql;
+
 -- 5. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
