@@ -155,6 +155,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     if (isEditMode) {
       // Edit mode: submit with minimal data
       const unitsPayload = units.map(u => ({
+        ...(u.id && !u.id.startsWith('temp-') && { id: u.id }),
         name: toTitleCase(u.name),
         conversion: u.conversion,
         is_base: u.is_base,

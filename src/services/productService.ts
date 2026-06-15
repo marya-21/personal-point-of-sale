@@ -1,6 +1,6 @@
 // src/services/productService.js
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Product } from "@/types";
+import type { ProductUnit } from "@/types";
 import { supabase } from "./supabase";
 
 type ProductMutationPayload = {
@@ -106,33 +106,33 @@ export const useCreateProduct = () => {
 /**
  * Update product dengan RPC
  */
-export const useUpdateProduct = () => {
-  const queryClient = useQueryClient();
+// export const useUpdateProduct = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation<any, Error, ProductMutationPayload>({
-    mutationFn: async (payload) => {
-      const { userId, id, ...rpcData } = payload;
-      if (!userId) throw new Error("User not authenticated");
-      if (!id) throw new Error("Product ID is required for update");
+//   return useMutation<any, Error, ProductMutationPayload>({
+//     mutationFn: async (payload) => {
+//       const { userId, id, ...rpcData } = payload;
+//       if (!userId) throw new Error("User not authenticated");
+//       if (!id) throw new Error("Product ID is required for update");
 
-      const { data, error } = await supabase.rpc("update_product_with_units", {
-        p_id: id,
-        p_user_id: userId,
-        ...rpcData,
-      });
+//       const { data, error } = await supabase.rpc("update_product_with_units", {
+//         p_id: id,
+//         p_user_id: userId,
+//         ...rpcData,
+//       });
 
-      if (error) throw error;
+//       if (error) throw error;
 
-      return data;
-    },
-    onSuccess: (_, productData) => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      if (productData.id) {
-        queryClient.invalidateQueries({ queryKey: ["product", productData.id] });
-      }
-    },
-  });
-};
+//       return data;
+//     },
+//     onSuccess: (_, productData) => {
+//       queryClient.invalidateQueries({ queryKey: ["products"] });
+//       if (productData.id) {
+//         queryClient.invalidateQueries({ queryKey: ["product", productData.id] });
+//       }
+//     },
+//   });
+// };
 
 /**
  * Delete product (soft delete)
@@ -232,4 +232,43 @@ export async function fetchProductDetail(productId: string) {
 
   if (error) throw error
   return data
+}
+
+
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      productId,
+      name,
+      unitsToUpsert,
+      unitsToDelete,
+      userId,
+    }: {
+      productId: string;
+      name: string;
+      unitsToUpsert: ProductUnit[];
+      unitsToDelete: ProductUnit[];
+      userId: string;
+    }) => {
+      const { data, error } = await supabase.rpc('update_product_with_units', {
+        p_product_id: productId,
+        p_name: name,
+        p_units_to_upsert: JSON.stringify(unitsToUpsert),
+        p_units_to_delete: JSON.stringify(unitsToDelete),
+        p_user_id: userId
+      })
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+      queryClient.invalidateQueries({ queryKey: ["products-list"] })
+      if (variables.productId) {
+        queryClient.invalidateQueries({ queryKey: ["product", variables.productId] })
+      }
+    },
+  })
 }

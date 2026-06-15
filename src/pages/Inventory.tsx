@@ -311,8 +311,34 @@ function Inventory() {
     if (!userId) return;
 
     if (editingProduct?.id) {
+      // Parse units dari string JSON
+      const currentUnits = JSON.parse(data.p_units);
+      const originalUnits = editingProduct.product_units || [];
+
+      const unitsToUpsert = currentUnits.map((u: any) => ({
+        name: u.name,
+        conversion: u.conversion,
+        is_base: u.is_base,
+        barcode: u.barcode,
+        price_sell: u.price_sell,
+        ...(u.id && !u.id.startsWith('temp-') ? { id: u.id } : {}),
+      }));
+
+      const currentIds = new Set(
+        currentUnits
+          .filter((u: any) => u.id && !u.id.startsWith('temp-'))
+          .map((u: any) => u.id)
+      );
+      const unitsToDelete = originalUnits.filter((u: any) => !currentIds.has(u.id));
+
       updateMutation.mutate(
-        { ...data, id: editingProduct.id, userId },
+        {
+          productId: editingProduct.id,
+          name: data.p_name,
+          unitsToUpsert,
+          unitsToDelete,
+          userId,
+        },
         {
           onSuccess: () => {
             showSuccess("update");
