@@ -385,6 +385,7 @@ function Inventory() {
 
   const handleRestockSubmit = (data: {
     p_id: string;
+    p_unit_id: string;
     p_qty_input: number;
     p_stock_unit_name: string;
     p_total_harga_beli: number | null;

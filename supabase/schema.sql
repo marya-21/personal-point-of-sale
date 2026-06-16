@@ -314,6 +314,121 @@ END;
 $$;
 $$ LANGUAGE plpgsql;
 
+
+-- 4d. Function untuk restock produk dengan perhitungan HPP (Harga Pokok Penjualan) baru menggunakan metode Weighted Average
+CREATE OR REPLACE FUNCTION process_restock(
+  p_product_id       UUID,
+  p_unit_id          UUID,
+  p_qty_input        NUMERIC,
+  p_total_harga_beli NUMERIC,
+  p_user_id          UUID,
+  p_notes            TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  success   BOOLEAN,
+  message   TEXT,
+  qty_added INTEGER,
+  hpp_before NUMERIC,
+  hpp_after  NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_conversion      NUMERIC;
+  v_qty_base        INTEGER;
+  v_stock_lama      INTEGER;
+  v_hpp_lama        NUMERIC;
+  v_hpp_baru        NUMERIC;
+  v_nilai_lama      NUMERIC;
+BEGIN
+
+  -- 1. Validasi: produk ada?
+  SELECT stock, price_cost
+  INTO v_stock_lama, v_hpp_lama
+  FROM products
+  WHERE id = p_product_id AND is_deleted = FALSE;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT FALSE, 'Produk tidak ditemukan'::TEXT, 0, 0::NUMERIC, 0::NUMERIC;
+    RETURN;
+  END IF;
+
+  -- 2. Validasi: unit ada dan milik produk ini?
+  SELECT conversion
+  INTO v_conversion
+  FROM product_units
+  WHERE id = p_unit_id
+    AND product_id = p_product_id
+    AND is_deleted = FALSE;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT FALSE, 'Satuan tidak ditemukan'::TEXT, 0, 0::NUMERIC, 0::NUMERIC;
+    RETURN;
+  END IF;
+
+  -- 3. Validasi: input tidak boleh nol atau negatif
+  IF p_qty_input <= 0 THEN
+    RETURN QUERY SELECT FALSE, 'Jumlah restock harus lebih dari 0'::TEXT, 0, 0::NUMERIC, 0::NUMERIC;
+    RETURN;
+  END IF;
+
+  IF p_total_harga_beli <= 0 THEN
+    RETURN QUERY SELECT FALSE, 'Total harga beli harus lebih dari 0'::TEXT, 0, 0::NUMERIC, 0::NUMERIC;
+    RETURN;
+  END IF;
+
+  -- 4. Hitung qty dalam satuan dasar
+  v_qty_base := FLOOR(p_qty_input * v_conversion);
+
+  -- 5. Hitung HPP baru (Weighted Average)
+  v_nilai_lama := v_stock_lama * v_hpp_lama;
+  v_hpp_baru   := (v_nilai_lama + p_total_harga_beli) / (v_stock_lama + v_qty_base);
+
+  -- 6. Update stock dan price_cost (HPP) di tabel products
+  UPDATE products
+  SET
+    stock      = stock + v_qty_base,
+    price_cost = ROUND(v_hpp_baru, 2),
+    updated_at = NOW()
+  WHERE id = p_product_id;
+
+  -- 7. Catat ke stock_history
+ INSERT INTO stock_history (
+  product_id,
+  quantity_before,
+  quantity_after,
+  reference_type,
+  created_by,
+  unit_id,
+  qty_input,
+  harga_beli_input,
+  harga_beli_base,
+  hpp_before,
+  hpp_after
+) VALUES (
+  p_product_id,
+  v_stock_lama,
+  v_stock_lama + v_qty_base,
+  'restock',
+  p_user_id,
+  p_unit_id,
+  p_qty_input,                                        
+  p_total_harga_beli,                                 -- total bayar ke supplier
+  ROUND(p_total_harga_beli / v_qty_base, 2),          -- harga beli per satuan dasar (pcs)
+  ROUND(v_hpp_lama, 2),                               -- HPP sebelum restock
+  ROUND(v_hpp_baru, 2)                                -- HPP setelah restock
+);
+
+  RETURN QUERY SELECT
+    TRUE,
+    'Restock berhasil'::TEXT,
+    v_qty_base,
+    ROUND(v_hpp_lama, 2),
+    ROUND(v_hpp_baru, 2);
+
+END;
+$$;
+
 -- 5. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;

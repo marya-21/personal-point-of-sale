@@ -10,6 +10,7 @@ interface RestockFormProps {
   onCancel: () => void;
   onSubmit: (data: {
     p_id: string;
+    p_unit_id: string;
     p_qty_input: number;
     p_stock_unit_name: string;
     p_total_harga_beli: number | null;
@@ -21,18 +22,18 @@ interface RestockFormProps {
 function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: RestockFormProps) {
   const { control, handleSubmit, watch } = useForm<any>({
     defaultValues: {
-      qty: 1,
+      qty: "",
       price_cost: 0,
     },
   });
 
   const baseUnit = product.product_units.find(u => u.is_base) ?? product.product_units[0];
-  const [stockUnitId, setStockUnitId] = useState<string>(baseUnit?.id || "");
+  const [stockUnitId, setStockUnitId] = useState<string>("");
 
   const qty = Number(watch("qty")) || 0;
   const totalCost = Number(watch("price_cost")) || 0;
   const selectedUnit = product.product_units.find(u => u.id === stockUnitId) ?? baseUnit;
-  const baseQtyPreview = qty * selectedUnit.conversion;
+  const baseQtyPreview = selectedUnit ? qty * selectedUnit.conversion : 0;
 
   const handleFormSubmit = handleSubmit((data) => {
     if (canEditPrice && totalCost <= 0 && !canEditPrice) {
@@ -42,6 +43,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
     const selectedUnitName = selectedUnit.name || "";
     onSubmit({
       p_id: product.id,
+      p_unit_id: stockUnitId,
       p_qty_input: qty,
       p_stock_unit_name: selectedUnitName,
       p_total_harga_beli: canEditPrice && totalCost > 0 ? totalCost : null,
@@ -82,6 +84,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
               onChange={(e) => setStockUnitId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
+              <option value="">Pilih Unit</option>
               {product.product_units.map((unit) => (
                 <option key={unit.id} value={unit.id}>
                   {unit.name || "(base)"}
@@ -90,7 +93,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
             </select>
           </div>
         </div>
-        {selectedUnit.id !== baseUnit.id && (
+        {selectedUnit && selectedUnit.id !== baseUnit.id && (
           <p className="text-xs text-gray-600 mt-2">
             = {baseQtyPreview} {baseUnit.name} (satuan dasar)
           </p>

@@ -158,22 +158,33 @@ export const useDeleteProduct = () => {
 };
 
 /**
- * Restock product
+ * Restock product dengan process_restock function (HPP weighted average)
  */
 export const useRestockProduct = () => {
   const queryClient = useQueryClient();
 
   return useMutation<any, Error, {
     p_id: string;
+    p_unit_id: string;
     p_user_id: string;
     p_qty_input: number;
     p_stock_unit_name: string;
     p_total_harga_beli: number | null;
   }>({
     mutationFn: async (data) => {
-      const { error } = await supabase.rpc("restock_product", data);
+      const { p_id, p_unit_id, p_user_id, p_qty_input, p_total_harga_beli } = data;
+
+      const { data: result, error } = await supabase.rpc("process_restock", {
+        p_product_id: p_id,
+        p_unit_id,
+        p_qty_input,
+        p_total_harga_beli: p_total_harga_beli || 0,
+        p_user_id,
+        p_notes: null,
+      });
+
       if (error) throw error;
-      return { success: true };
+      return result;
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["products-list"] });
