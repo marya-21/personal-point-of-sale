@@ -4,17 +4,17 @@ import { formatRupiah } from '@/utils/formatCurrency'
 import { Button } from '@/ui/button'
 
 function CartItem({ item }: { item: any }) {
-  const { addItem, decreaseQty, removeItem } = useCartStore()
+  const { decreaseQty, removeItem } = useCartStore()
 
   return (
     <div className="flex flex-col gap-3 py-3 border-b border-border">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+          <p className="text-sm font-medium text-gray-900 truncate">{item.name} — {item.unitName}</p>
           <p className="text-xs text-gray-500">{formatRupiah(item.price_sell)}</p>
         </div>
         <Button
-          onClick={() => removeItem(item.id)}
+          onClick={() => removeItem(item.productId, item.unitId)}
           variant="link"
           size="icon"
           className="text-destructive hover:text-destructive/50"
@@ -25,7 +25,7 @@ function CartItem({ item }: { item: any }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => decreaseQty(item.id)}
+            onClick={() => decreaseQty(item.productId, item.unitId)}
             variant="ghost"
             size="icon"
             className="rounded-full hover:bg-secondary hover:text-secondary-foreground"
@@ -35,12 +35,11 @@ function CartItem({ item }: { item: any }) {
           </Button>
           <span className="w-6 text-center text-sm font-semibold">{item.qty}</span>
           <Button
-            onClick={() => addItem(item)}
+            disabled
             variant="ghost"
             size="icon"
             className="rounded-full hover:bg-secondary hover:text-secondary-foreground"
             title="Tambah"
-
           >
             <CirclePlus />
           </Button>
@@ -85,7 +84,7 @@ function Cart({ onCheckout }: { onCheckout: () => void }) {
 
       <div className="flex-1 overflow-y-auto">
         {items.map((item) => (
-          <CartItem key={item.id} item={item} />
+          <CartItem key={`${item.productId}-${item.unitId}`} item={item} />
         ))}
       </div>
 

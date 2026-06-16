@@ -1,28 +1,37 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import type { Product } from '../../types'
 import useBarcodeScanner from '../../hooks/useBarcodeScanner'
 import useCartStore from '../../store/useCartStore'
 
-// Komponen ini tidak merender apapun secara visual.
-// Tugasnya hanya mendengarkan scan dan mencari produk di cache.
-function ScannerListener({ onNotFound }) {
+function ScannerListener({ onNotFound, onStockError }) {
   const queryClient = useQueryClient()
   const { addItem } = useCartStore()
 
   const handleScan = useCallback(
-    (barcode) => {
-      // Cari di cache TanStack Query (tidak ada request API baru)
-      const products = queryClient.getQueryData(['products'])
-      if (!products) return
+    (barcode: string) => {
+      const products = queryClient.getQueryData<Product[]>(['products']) ?? []
 
-      const found = products.find((p) => p.barcode === barcode)
-      if (found) {
-        addItem(found)
+      let foundProduct = null
+      let foundUnit = null
+
+      for (const product of products) {
+        const unit = product.product_units?.find((u) => u.barcode === barcode)
+        if (unit) {
+          foundProduct = product
+          foundUnit = unit
+          break
+        }
+      }
+
+      if (foundProduct && foundUnit) {
+        const err = addItem(foundProduct, foundUnit)
+        if (err) onStockError?.(err)
       } else {
         onNotFound?.(barcode)
       }
     },
-    [queryClient, addItem, onNotFound]
+    [queryClient, addItem, onNotFound, onStockError]
   )
 
   useBarcodeScanner(handleScan)

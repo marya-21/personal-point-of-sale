@@ -5,9 +5,18 @@ export interface Product {
   stock: number
   price_sell: number
   price_cost: number
+  product_units?: ProductUnit[]
 }
 
-export interface CartItem extends ProductUnit {
+export interface CartItem {
+  productId: string
+  unitId: string
+  name: string
+  unitName: string
+  price_sell: number
+  conversion: number
+  stock: number
+  price_cost: number
   qty: number
 }
 

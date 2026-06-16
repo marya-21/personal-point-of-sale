@@ -27,8 +27,12 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
     checkoutMutation.mutate(
       {
         items: items.map((item) => ({
-          product_id: item.id,
+          product_id: item.productId,
+          unit_id: item.unitId,
           qty: item.qty,
+          subtotal: item.price_sell * item.qty,
+          price_sell_snapshot: item.price_sell,
+          hpp_snapshot: item.price_cost * item.conversion,
         })),
         cash_amount: cash,
         payment_method: "cash",
@@ -206,6 +210,7 @@ function Cashier() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [notFoundBarcode, setNotFoundBarcode] = useState("");
+  const [stockError, setStockError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const { getTotal, addItem } = useCartStore();
 
@@ -220,6 +225,11 @@ function Cashier() {
   const handleNotFound = (barcode: string) => {
     setNotFoundBarcode(barcode);
     setTimeout(() => setNotFoundBarcode(""), 3000);
+  };
+
+  const handleStockError = (msg: string) => {
+    setStockError(msg);
+    setTimeout(() => setStockError(""), 3000);
   };
 
   const handleCheckoutSuccess = (data: any) => {
@@ -253,12 +263,17 @@ function Cashier() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <ScannerListener onNotFound={handleNotFound} />
+      <ScannerListener onNotFound={handleNotFound} onStockError={handleStockError} />
 
-      {/* Notification barcode tidak ditemukan */}
+      {/* Notifications */}
       {notFoundBarcode && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg text-sm">
           Barcode <strong>{notFoundBarcode}</strong> tidak ditemukan
+        </div>
+      )}
+      {stockError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg text-sm">
+          {stockError}
         </div>
       )}
 
@@ -281,29 +296,34 @@ function Cashier() {
               Produk tidak ditemukan
             </p>
           ) : (
-            filtered.map((product) => (
-              <div
-                key={product.id}
-                className="flex items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 truncate">
-                    {product.name}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {formatRupiah(product.price_sell)}
-                    <span
-                      className={`ml-2 ${product.stock === 0 ? "text-red-500" : "text-gray-400"}`}
-                    >
-                      · Stok: {product.stock}
-                    </span>
-                  </p>
+            filtered.flatMap((product) =>
+              (product.product_units ?? []).map((unit) => (
+                <div
+                  key={`${product.id}-${unit.id}`}
+                  className="flex items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">
+                      {product.name} — {unit.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {formatRupiah(unit.price_sell)}
+                      <span
+                        className={`ml-2 ${product.stock === 0 ? "text-red-500" : "text-gray-400"}`}
+                      >
+                        · Stok: {product.stock}
+                      </span>
+                    </p>
+                  </div>
+                  <Button variant="primary" size="icon" className="rounded-full" onClick={() => {
+                    const err = addItem(product, unit)
+                    if (err) handleStockError(err)
+                  }} disabled={product.stock === 0} title="Tambah ke keranjang">
+                    <ShoppingCart />
+                  </Button>
                 </div>
-                <Button variant="primary" size="icon" className="rounded-full" onClick={() => addItem(product)} disabled={product.stock === 0} title="Tambah ke keranjang">
-                  <ShoppingCart />
-                </Button>
-              </div>
-            ))
+              ))
+            )
           )}
         </div>
       </div>

@@ -23,7 +23,15 @@ export const useProducts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select(`
+          id,
+          name,
+          barcode,
+          stock,
+          price_sell,
+          price_cost,
+          product_units(id, name, conversion, is_base, barcode, price_sell)
+        `)
         .eq("is_deleted", false)
         .order("name");
 
@@ -32,7 +40,7 @@ export const useProducts = () => {
       // Calculate margin info on frontend
       return data.map((product) => ({
         ...product,
-        margin_rp: (product.price || 0) - (product.cost_price || 0),
+        margin_rp: (product.price_sell || 0) - (product.price_cost || 0),
         margin_percent:
           product.price_sell > 0
             ? (
@@ -207,6 +215,7 @@ export async function fetchProductsList() {
       price_cost,
       product_units(id, name, conversion, is_base, price_sell)
     `)
+     .eq('is_deleted', false)
     .order('name', { ascending: true })
 
   if (error) throw error
