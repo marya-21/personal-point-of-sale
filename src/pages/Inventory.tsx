@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SquarePen, Trash, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "../services/supabase";
+import { supabase } from "@/services/supabase";
 import {
   useCreateProduct,
   useUpdateProduct,
@@ -10,10 +10,10 @@ import {
   useRestockProduct,
   fetchProductsList,
   fetchProductDetail,
-} from "../services/productService";
+} from "@/services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
-import ProductForm from "../components/inventory/ProductForm";
-import RestockForm from "../components/inventory/RestockForm";
+import ProductForm from "@/components/inventory/ProductForm";
+import RestockForm from "@/components/inventory/RestockForm";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useAuth, usePermission } from "../hooks/useAuth";
+import { useAuth, usePermission } from "@/hooks/useAuth";
 import { Product, ProductV2 } from "@/types";
 
 type TopSellingItem = {

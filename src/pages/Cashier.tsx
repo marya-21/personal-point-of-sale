@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { useCheckout } from "../services/checkoutService";
 import { useProducts } from "../services/productService";
 import useCartStore from "../store/useCartStore";
@@ -7,9 +7,11 @@ import Cart from "../components/pos/Cart";
 import ScannerListener from "../components/pos/ScannerListener";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Button } from "@/ui/button";
+import { ButtonGroup } from "@/ui/button-group";
 import { Input } from "@/ui/input";
 import { usePermission } from "../hooks/useAuth";
 import { ShoppingCart } from "lucide-react";
+import { ProductV2 } from "@/types";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const [cashAmount, setCashAmount] = useState("");
@@ -20,7 +22,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
   const change = cash - total;
   const isValid = cash >= total;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isValid) return;
 
@@ -40,6 +42,8 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
       {
         onSuccess: (data) => {
           clearCart();
+          setCashAmount("");
+          checkoutMutation.reset();
           onSuccess(data);
         },
       },
@@ -52,7 +56,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
     onClose();
   };
 
-  const handleCashChange = (e) => {
+  const handleCashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const digits = e.target.value.replace(/\D/g, "");
     setCashAmount(digits);
   };
@@ -107,11 +111,10 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
             </p>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <ButtonGroup fullWidth orientation="horizontal" className="pt-2">
             <Button
               type="button"
               variant="secondary"
-              className="flex-1"
               onClick={handleClose}
             >
               Batal
@@ -119,12 +122,11 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
             <Button
               type="submit"
               variant="primary"
-              className="flex-1"
               disabled={!isValid || checkoutMutation.isPending}
             >
               {checkoutMutation.isPending ? "Memproses..." : "Konfirmasi"}
             </Button>
-          </div>
+          </ButtonGroup>
         </form>
       </DialogContent>
     </Dialog>
@@ -261,6 +263,8 @@ function Cashier() {
     );
   }
 
+  console.log(filtered, 'filtered')
+
   return (
     <div className="flex h-screen bg-gray-100">
       <ScannerListener onNotFound={handleNotFound} onStockError={handleStockError} />
@@ -296,34 +300,44 @@ function Cashier() {
               Produk tidak ditemukan
             </p>
           ) : (
-            filtered.flatMap((product) =>
-              (product.product_units ?? []).map((unit) => (
-                <div
-                  key={`${product.id}-${unit.id}`}
-                  className="flex items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 truncate">
-                      {product.name} — {unit.name}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {formatRupiah(unit.price_sell)}
-                      <span
-                        className={`ml-2 ${product.stock === 0 ? "text-red-500" : "text-gray-400"}`}
-                      >
-                        · Stok: {product.stock}
-                      </span>
-                    </p>
-                  </div>
-                  <Button variant="primary" size="icon" className="rounded-full" onClick={() => {
-                    const err = addItem(product, unit)
-                    if (err) handleStockError(err)
-                  }} disabled={product.stock === 0} title="Tambah ke keranjang">
-                    <ShoppingCart />
-                  </Button>
+            filtered.map((product: ProductV2) => (
+              <div
+                key={product.id}
+                className="flex flex-col bg-white rounded-lg px-4 py-3 shadow-sm"
+              >
+                <div className="mb-3">
+                  <p className="font-medium text-gray-900 truncate">
+                    {product.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    <span
+                      className={`${product.stock === 0 ? "text-destructive" : "text-foreground"}`}
+                    >
+                      Stok: {product.stock}
+                    </span>
+                  </p>
                 </div>
-              ))
-            )
+
+                <div className="flex flex-wrap gap-2">
+                  {product?.product_units?.map((unit) => (
+                    <Button
+                      key={unit.id}
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        const err = addItem(product, unit)
+                        if (err) handleStockError(err)
+                      }}
+                      disabled={product.stock === 0}
+                      title="Tambah ke keranjang"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      {unit.name} - {formatRupiah(unit.price_sell)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>

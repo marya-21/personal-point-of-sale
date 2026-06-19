@@ -429,6 +429,121 @@ BEGIN
 END;
 $$;
 
+-- 5. RPC Functions untuk get products dengan active units only
+CREATE OR REPLACE FUNCTION get_products_with_active_units()
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  barcode TEXT,
+  stock INTEGER,
+  price_sell INTEGER,
+  price_cost INTEGER,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  product_units JSONB
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    p.id,
+    p.name,
+    p.barcode,
+    p.stock,
+    p.price_sell,
+    p.price_cost,
+    p.created_at,
+    p.updated_at,
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', pu.id,
+          'name', pu.name,
+          'conversion', pu.conversion,
+          'is_base', pu.is_base,
+          'barcode', pu.barcode,
+          'price_sell', pu.price_sell
+        ) ORDER BY pu.price_sell ASC
+      ) FILTER (WHERE pu.id IS NOT NULL),
+      '[]'::jsonb
+    ) AS product_units
+  FROM products p
+  LEFT JOIN product_units pu ON p.id = pu.product_id AND pu.is_deleted = false
+  WHERE p.is_deleted = false
+  GROUP BY p.id, p.name, p.barcode, p.stock, p.price_sell, p.price_cost, p.created_at, p.updated_at
+  ORDER BY p.name ASC;
+$$;
+
+CREATE OR REPLACE FUNCTION get_products_list()
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  stock INTEGER,
+  price_cost INTEGER,
+  product_units JSONB
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    p.id,
+    p.name,
+    p.stock,
+    p.price_cost,
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', pu.id,
+          'name', pu.name,
+          'conversion', pu.conversion,
+          'is_base', pu.is_base,
+          'price_sell', pu.price_sell
+        ) ORDER BY pu.price_sell ASC
+      ) FILTER (WHERE pu.id IS NOT NULL),
+      '[]'::jsonb
+    ) AS product_units
+  FROM products p
+  LEFT JOIN product_units pu ON p.id = pu.product_id AND pu.is_deleted = false
+  WHERE p.is_deleted = false
+  GROUP BY p.id, p.name, p.stock, p.price_cost
+  ORDER BY p.name ASC;
+$$;
+
+CREATE OR REPLACE FUNCTION get_product_detail(p_product_id UUID)
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  stock INTEGER,
+  price_cost INTEGER,
+  product_units JSONB
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    p.id,
+    p.name,
+    p.stock,
+    p.price_cost,
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', pu.id,
+          'name', pu.name,
+          'conversion', pu.conversion,
+          'is_base', pu.is_base,
+          'barcode', pu.barcode,
+          'price_sell', pu.price_sell
+        ) ORDER BY pu.price_sell ASC
+      ) FILTER (WHERE pu.id IS NOT NULL),
+      '[]'::jsonb
+    ) AS product_units
+  FROM products p
+  LEFT JOIN product_units pu ON p.id = pu.product_id AND pu.is_deleted = false
+  WHERE p.id = p_product_id AND p.is_deleted = false
+  GROUP BY p.id, p.name, p.stock, p.price_cost;
+$$;
+
 -- 5. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;

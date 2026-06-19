@@ -10,36 +10,25 @@ type ProductMutationPayload = {
   p_qty_input: number;
   p_stock_unit_name: string;
   p_units: string;
-  id?: string; // For updates
+  id?: string;
   reason?: string;
 };
 
 /**
- * Fetch all products with margin calculations
+ * Fetch all products with margin calculations (via RPC - returns only active units)
  */
 export const useProducts = () => {
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(`
-          id,
-          name,
-          barcode,
-          stock,
-          price_sell,
-          price_cost,
-          product_units(id, name, conversion, is_base, barcode, price_sell)
-        `)
-        .eq("is_deleted", false)
-        .order("name");
+      const { data, error } = await supabase.rpc("get_products_with_active_units");
 
       if (error) throw error;
 
       // Calculate margin info on frontend
-      return data.map((product) => ({
+      return data.map((product: any) => ({
         ...product,
+        product_units: Array.isArray(product.product_units) ? product.product_units : [],
         margin_rp: (product.price_sell || 0) - (product.price_cost || 0),
         margin_percent:
           product.price_sell > 0
@@ -203,26 +192,17 @@ export const useRestockProduct = () => {
 };
 
 /**
- * Fetch list untuk tabel
+ * Fetch list untuk tabel (via RPC - returns only active units)
  */
 export async function fetchProductsList() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      id,
-      name,
-      stock,
-      price_cost,
-      product_units(id, name, conversion, is_base, price_sell)
-    `)
-     .eq('is_deleted', false)
-    .order('name', { ascending: true })
+  const { data, error } = await supabase.rpc('get_products_list')
 
   if (error) throw error
 
   // Transform: ambil base unit info
-  return data.map(p => {
-    const baseUnit = p.product_units.find(u => u.is_base)
+  return data.map((p: any) => {
+    const units = Array.isArray(p.product_units) ? p.product_units : []
+    const baseUnit = units.find((u: any) => u.is_base)
     return {
       id: p.id,
       name: p.name,
@@ -235,23 +215,20 @@ export async function fetchProductsList() {
 }
 
 /**
- * Fetch detail untuk edit modal
+ * Fetch detail untuk edit modal (via RPC - returns only active units)
  */
 export async function fetchProductDetail(productId: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      id,
-      name,
-      stock,
-      price_cost,
-      product_units(id, name, conversion, is_base, barcode, price_sell)
-    `)
-    .eq('id', productId)
-    .single()
+  const { data, error } = await supabase.rpc('get_product_detail', {
+    p_product_id: productId
+  })
 
   if (error) throw error
-  return data
+
+  const product = data?.[0]
+  return {
+    ...product,
+    product_units: Array.isArray(product?.product_units) ? product.product_units : []
+  }
 }
 
 
