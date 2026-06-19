@@ -1,3 +1,4 @@
+import { CheckoutRequest } from "@/types";
 import { supabase } from "./supabase";
 
 /**
@@ -50,13 +51,13 @@ export const createOrUpdateProductWithAudit = async (productData, userId) => {
  * @param {string} userId - User ID dari auth
  * @returns {Promise<{success: boolean, data: any, error: string|null}>}
  */
-export const processCheckoutWithMargins = async (checkoutData, userId) => {
+export const processCheckoutWithMargins = async (checkoutData: CheckoutRequest, userId: string) => {
   try {
     const { data, error } = await supabase.rpc(
       "process_checkout_with_margins",
       {
         p_items: JSON.stringify(checkoutData.items),
-        p_cash_amount: parseFloat(checkoutData.cash_amount),
+        p_cash_amount: checkoutData.cash_amount,
         p_payment_method: checkoutData.payment_method,
         p_user_id: userId,
         p_notes: checkoutData.notes || null,
@@ -77,7 +78,7 @@ export const processCheckoutWithMargins = async (checkoutData, userId) => {
       data: result || null,
       error: result?.message || null,
     };
-  } catch (err) {
+  } catch (err: any) {
     return {
       success: false,
       data: null,

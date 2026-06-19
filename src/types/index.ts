@@ -67,4 +67,5 @@ export interface CheckoutRequest {
   items: CheckoutItem[]
   cash_amount: number
   payment_method: string
+  notes: string
 }

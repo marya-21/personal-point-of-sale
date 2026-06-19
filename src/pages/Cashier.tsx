@@ -26,18 +26,23 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
     e.preventDefault();
     if (!isValid) return;
 
+    const checkoutItems = items.map((item) => ({
+      product_id: item.productId,
+      unit_id: item.unitId,
+      qty: item.qty,
+      subtotal: item.price_sell * item.qty,
+      price_sell_snapshot: item.price_sell,
+      hpp_snapshot: item.price_cost * item.conversion,
+    }));
+
+    console.log("Checkout Items:", checkoutItems);
+
     checkoutMutation.mutate(
       {
-        items: items.map((item) => ({
-          product_id: item.productId,
-          unit_id: item.unitId,
-          qty: item.qty,
-          subtotal: item.price_sell * item.qty,
-          price_sell_snapshot: item.price_sell,
-          hpp_snapshot: item.price_cost * item.conversion,
-        })),
+        items: checkoutItems,
         cash_amount: cash,
         payment_method: "cash",
+        notes: "",
       },
       {
         onSuccess: (data) => {
@@ -262,8 +267,6 @@ function Cashier() {
       </div>
     );
   }
-
-  console.log(filtered, 'filtered')
 
   return (
     <div className="flex h-screen bg-gray-100">

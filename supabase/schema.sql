@@ -156,22 +156,38 @@ $$ LANGUAGE plpgsql;
 
 -- 1. Tabel Produk
 CREATE TABLE IF NOT EXISTS products (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  barcode    TEXT UNIQUE NOT NULL,
-  name       TEXT NOT NULL,
-  price_sell INTEGER NOT NULL DEFAULT 0,
-  stock      INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  price_cost NUMERIC(15, 2) DEFAULT 0,
+  stock INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by UUID,
+  created_by UUID,
+  is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- 1b. Tabel Unit Produk (untuk multi-unit/satuan)
+CREATE TABLE IF NOT EXISTS product_units (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  conversion NUMERIC(10, 4) NOT NULL CHECK (conversion > 0),
+  is_base BOOLEAN NOT NULL DEFAULT FALSE,
+  barcode TEXT UNIQUE,
+  price_sell NUMERIC(15, 2) NOT NULL CHECK (price_sell >= 0),
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2. Tabel Transaksi (Header)
 CREATE TABLE IF NOT EXISTS transactions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cashier_id    UUID,  -- referensi ke tabel users (nullable untuk data lama)
-  total_price   INTEGER NOT NULL,
-  cash_amount   INTEGER NOT NULL,
-  change_amount INTEGER NOT NULL,
-  created_at    TIMESTAMPTZ DEFAULT now()
+  cashier_id    UUID,
+  total_price   NUMERIC(15, 2) NOT NULL,
+  cash_amount   NUMERIC(15, 2) NOT NULL,
+  change_amount NUMERIC(15, 2) NOT NULL,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Jika tabel transactions sudah ada sebelumnya, jalankan ini untuk menambah kolom:
@@ -179,11 +195,14 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- 3. Tabel Item Transaksi (Detail)
 CREATE TABLE IF NOT EXISTS transaction_items (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-  product_id     UUID NOT NULL REFERENCES products(id),
-  qty            INTEGER NOT NULL,
-  subtotal       INTEGER NOT NULL
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id        UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  product_id            UUID NOT NULL REFERENCES products(id),
+  unit_id               UUID REFERENCES product_units(id),
+  qty                   INTEGER NOT NULL,
+  subtotal              NUMERIC(15, 2) NOT NULL DEFAULT 0,
+  price_sell_snapshot   NUMERIC(15, 2) NOT NULL DEFAULT 0,
+  hpp_snapshot          NUMERIC(15, 2) NOT NULL DEFAULT 0
 );
 
 -- 4. Function untuk mengurangi stok secara atomik
@@ -387,7 +406,7 @@ BEGIN
   -- 6. Update stock dan price_cost (HPP) di tabel products
   UPDATE products
   SET
-    stock      = stock + v_qty_base,
+    stock = stock + v_qty_base,
     price_cost = ROUND(v_hpp_baru, 2),
     updated_at = NOW()
   WHERE id = p_product_id;
@@ -429,6 +448,164 @@ BEGIN
 END;
 $$;
 
+-- 4e. RPC Function untuk checkout dengan snapshot harga dan HPP
+CREATE OR REPLACE FUNCTION process_checkout_with_margins(
+  p_items TEXT,
+  p_cash_amount DECIMAL,
+  p_payment_method TEXT,
+  p_user_id UUID,
+  p_notes TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  transaction_id UUID,
+  success BOOLEAN,
+  message TEXT,
+  total_price DECIMAL,
+  total_cost DECIMAL,
+  total_margin DECIMAL,
+  margin_percent DECIMAL,
+  change_amount DECIMAL
+) AS $$
+DECLARE
+  v_transaction_id UUID;
+  v_total_price DECIMAL := 0;
+  v_total_cost DECIMAL := 0;
+  v_items_json JSONB;
+  v_item JSONB;
+  v_product_id UUID;
+  v_unit_id UUID;
+  v_qty INTEGER;
+  v_conversion NUMERIC;
+  v_price_sell_snapshot DECIMAL;
+  v_hpp_snapshot DECIMAL;
+  v_subtotal DECIMAL;
+  v_item_cost DECIMAL;
+  v_stock_base INTEGER;
+  v_qty_base INTEGER;
+BEGIN
+  -- Parse text to JSONB
+  v_items_json := p_items::JSONB;
+
+  -- Validate items & calculate totals
+  FOR v_item IN SELECT jsonb_array_elements(v_items_json)
+  LOOP
+    v_product_id := (v_item->>'product_id')::UUID;
+    v_unit_id := (v_item->>'unit_id')::UUID;
+    v_qty := (v_item->>'qty')::INTEGER;
+    v_price_sell_snapshot := (v_item->>'price_sell_snapshot')::DECIMAL;
+    v_hpp_snapshot := (v_item->>'hpp_snapshot')::DECIMAL;
+
+    -- Get product stock & unit conversion
+    SELECT stock INTO v_stock_base
+    FROM products WHERE id = v_product_id AND is_deleted = FALSE;
+
+    IF v_stock_base IS NULL THEN
+      RETURN QUERY SELECT NULL::UUID, FALSE, 'Produk tidak ditemukan: ' || v_product_id::TEXT,
+                            NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL;
+      RETURN;
+    END IF;
+
+    -- Get unit conversion
+    SELECT conversion INTO v_conversion
+    FROM product_units WHERE id = v_unit_id AND product_id = v_product_id AND is_deleted = FALSE;
+
+    IF v_conversion IS NULL THEN
+      v_conversion := 1;
+    END IF;
+
+    -- Check stock in base units
+    v_qty_base := v_qty * v_conversion;
+    IF v_stock_base < v_qty_base THEN
+      RETURN QUERY SELECT NULL::UUID, FALSE, 'Stok tidak cukup: ' || v_product_id::TEXT,
+                            NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL;
+      RETURN;
+    END IF;
+
+    -- Calculate item totals using snapshots
+    v_subtotal := v_price_sell_snapshot * v_qty;
+    v_item_cost := v_hpp_snapshot * v_qty;
+
+    v_total_price := v_total_price + v_subtotal;
+    v_total_cost := v_total_cost + v_item_cost;
+  END LOOP;
+
+  -- Validate payment
+  IF p_cash_amount < v_total_price THEN
+    RETURN QUERY SELECT NULL::UUID, FALSE, 'Jumlah uang tidak cukup',
+                        NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL;
+    RETURN;
+  END IF;
+
+  -- Create transaction
+  v_transaction_id := gen_random_uuid();
+  INSERT INTO transactions (
+    id, total_price, cash_amount, change_amount, created_at
+  ) VALUES (
+    v_transaction_id,
+    v_total_price,
+    p_cash_amount,
+    p_cash_amount - v_total_price,
+    CURRENT_TIMESTAMP
+  );
+
+  -- Insert transaction items & decrement stock
+  FOR v_item IN SELECT jsonb_array_elements(v_items_json)
+  LOOP
+    v_product_id := (v_item->>'product_id')::UUID;
+    v_unit_id := (v_item->>'unit_id')::UUID;
+    v_qty := (v_item->>'qty')::INTEGER;
+    v_subtotal := (v_item->>'subtotal')::DECIMAL;
+
+    -- Explicitly parse snapshots with NULL check
+    v_price_sell_snapshot := COALESCE((v_item->>'price_sell_snapshot')::NUMERIC, 0)::DECIMAL;
+    v_hpp_snapshot := COALESCE((v_item->>'hpp_snapshot')::NUMERIC, 0)::DECIMAL;
+
+    -- Validate snapshots are not zero
+    IF v_price_sell_snapshot <= 0 OR v_hpp_snapshot <= 0 THEN
+      RETURN QUERY SELECT NULL::UUID, FALSE, 'Snapshot values invalid: price_sell=' || v_price_sell_snapshot || ', hpp=' || v_hpp_snapshot,
+                            NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL, NULL::DECIMAL;
+      RETURN;
+    END IF;
+
+    -- Get unit conversion
+    SELECT conversion INTO v_conversion
+    FROM product_units WHERE id = v_unit_id AND product_id = v_product_id;
+
+    IF v_conversion IS NULL THEN
+      v_conversion := 1;
+    END IF;
+
+    v_qty_base := v_qty * v_conversion;
+
+    -- Insert transaction item dengan snapshots
+    INSERT INTO transaction_items (
+      transaction_id, product_id, unit_id, qty,
+      price_sell_snapshot, hpp_snapshot, subtotal
+    ) VALUES (
+      v_transaction_id, v_product_id, v_unit_id, v_qty,
+      v_price_sell_snapshot, v_hpp_snapshot, v_subtotal
+    );
+
+    -- Decrement stock dalam base units
+    UPDATE products SET stock = stock - v_qty_base WHERE id = v_product_id;
+  END LOOP;
+
+  -- Return success
+  RETURN QUERY SELECT
+    v_transaction_id,
+    TRUE,
+    'Checkout berhasil'::TEXT,
+    v_total_price,
+    v_total_cost,
+    v_total_price - v_total_cost,
+    CASE
+      WHEN v_total_price = 0 THEN 0
+      ELSE ROUND(((v_total_price - v_total_cost) / v_total_price) * 100, 2)
+    END,
+    p_cash_amount - v_total_price;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 5. RPC Functions untuk get products dengan active units only
 CREATE OR REPLACE FUNCTION get_products_with_active_units()
 RETURNS TABLE (
@@ -448,7 +625,7 @@ AS $$
   SELECT
     p.id,
     p.name,
-    p.barcode,
+    p.sku,
     p.stock,
     p.price_sell,
     p.price_cost,
@@ -470,7 +647,7 @@ AS $$
   FROM products p
   LEFT JOIN product_units pu ON p.id = pu.product_id AND pu.is_deleted = false
   WHERE p.is_deleted = false
-  GROUP BY p.id, p.name, p.barcode, p.stock, p.price_sell, p.price_cost, p.created_at, p.updated_at
+  GROUP BY p.id, p.name, p.sku, p.stock, p.price_sell, p.price_cost, p.created_at, p.updated_at
   ORDER BY p.name ASC;
 $$;
 
@@ -479,7 +656,7 @@ RETURNS TABLE (
   id UUID,
   name TEXT,
   stock INTEGER,
-  price_cost INTEGER,
+  price_cost NUMERIC,
   product_units JSONB
 )
 LANGUAGE sql
@@ -514,7 +691,7 @@ RETURNS TABLE (
   id UUID,
   name TEXT,
   stock INTEGER,
-  price_cost INTEGER,
+  price_cost NUMERIC,
   product_units JSONB
 )
 LANGUAGE sql
@@ -544,14 +721,32 @@ AS $$
   GROUP BY p.id, p.name, p.stock, p.price_cost;
 $$;
 
--- 5. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
+
+-- 5. Migration untuk tabel yang sudah ada (jalankan jika table sudah dibuat sebelumnya):
+-- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS unit_id UUID REFERENCES product_units(id);
+-- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS price_sell_snapshot NUMERIC(15, 2) DEFAULT 0;
+-- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS hpp_snapshot NUMERIC(15, 2) DEFAULT 0;
+-- ALTER TABLE transactions ALTER COLUMN total_price TYPE NUMERIC(15, 2);
+-- ALTER TABLE transactions ALTER COLUMN cash_amount TYPE NUMERIC(15, 2);
+-- ALTER TABLE transactions ALTER COLUMN change_amount TYPE NUMERIC(15, 2);
+
+-- 6. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE transaction_items ENABLE ROW LEVEL SECURITY;
 
--- 6. Contoh data produk untuk testing
-INSERT INTO products (barcode, name, price_sell, stock) VALUES
-  ('8991234567890', 'Aqua 600ml', 3000, 100),
-  ('8997002100104', 'Indomie Goreng', 3500, 200),
-  ('8999999100110', 'Teh Botol Sosro 350ml', 4000, 150)
+-- 7. Contoh data produk untuk testing
+INSERT INTO products (sku, name, price_cost, price_sell, stock) VALUES
+  ('8991234567890', 'Aqua 600ml', 2000, 3000, 100),
+  ('8997002100104', 'Indomie Goreng', 2500, 3500, 200),
+  ('8999999100110', 'Teh Botol Sosro 350ml', 3000, 4000, 150)
+ON CONFLICT (sku) DO NOTHING;
+
+-- 8. Contoh data product_units untuk testing
+INSERT INTO product_units (product_id, name, conversion, is_base, barcode, price_sell) VALUES
+  ((SELECT id FROM products WHERE sku = '8991234567890'), 'Pcs', 1, true, '8991234567890', 3000),
+  ((SELECT id FROM products WHERE sku = '8991234567890'), 'Karton (12 Pcs)', 12, false, '8991234567890-KTN', 34800),
+  ((SELECT id FROM products WHERE sku = '8997002100104'), 'Pcs', 1, true, '8997002100104', 3500),
+  ((SELECT id FROM products WHERE sku = '8997002100104'), 'Dus (24 Pcs)', 24, false, '8997002100104-DUS', 78000),
+  ((SELECT id FROM products WHERE sku = '8999999100110'), 'Botol', 1, true, '8999999100110', 4000)
 ON CONFLICT (barcode) DO NOTHING;

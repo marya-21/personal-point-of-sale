@@ -30,85 +30,85 @@ function DetailModal({ transaction, onClose, isAdmin }: any) {
         <DialogHeader>
           <DialogTitle>Detail Transaksi</DialogTitle>
         </DialogHeader>
-      <div className="space-y-4">
-        <p className="text-sm text-gray-500">{dateStr}</p>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">{dateStr}</p>
 
-        {isLoading ? (
-          <div className="flex justify-center py-6">
-            <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="text-sm text-red-600">Gagal memuat detail</div>
-        ) : detail?.data?.items ? (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="pb-2 font-medium">Produk</th>
-                <th className="pb-2 font-medium text-center">Qty</th>
-                <th className="pb-2 font-medium text-right">Harga Satuan</th>
-                <th className="pb-2 font-medium text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {detail.data.items.map((item, i) => (
-                <tr key={i}>
-                  <td className="py-2 text-gray-900">
-                    {item.products?.name ?? "—"}
-                  </td>
-                  <td className="py-2 text-center text-gray-600">{item.qty}</td>
-                  <td className="py-2 text-right text-gray-900">
-                    {formatRupiah(item.price_sell_snapshot)}
-                  </td>
-                  <td className="py-2 text-right text-gray-900">
-                    {formatRupiah(item.subtotal)}
-                  </td>
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-sm text-red-600">Gagal memuat detail</div>
+          ) : detail?.data?.items ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="pb-2 font-medium">Produk</th>
+                  <th className="pb-2 font-medium text-center">Qty</th>
+                  <th className="pb-2 font-medium text-right">Harga Satuan</th>
+                  <th className="pb-2 font-medium text-right">Subtotal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {detail.data.items.map((item, i) => (
+                  <tr key={i}>
+                    <td className="py-2 text-gray-900">
+                      {item.products?.name ?? "—"}
+                    </td>
+                    <td className="py-2 text-center text-gray-600">{item.qty}</td>
+                    <td className="py-2 text-right text-gray-900">
+                      {formatRupiah(item.price_sell_snapshot)}
+                    </td>
+                    <td className="py-2 text-right text-gray-900">
+                      {formatRupiah(item.subtotal)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
 
-        {detail?.data && (
-          <div className="border-t border-gray-200 pt-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Total Penjualan</span>
-              <span className="font-semibold">
-                {formatRupiah(detail.data.total_price)}
-              </span>
-            </div>
-            {isAdmin && (
-              <>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Modal</span>
-                  <span className="font-semibold">
-                    {formatRupiah(detail.data.total_cost)}
-                  </span>
-                </div>
-                <div className="bg-green-50 rounded p-2 flex justify-between">
-                  <span className="font-semibold text-green-700">Margin</span>
-                  <div className="text-right">
-                    <p className="font-bold text-green-700">
-                      {formatRupiah(detail.data.total_margin)}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      {detail.data.margin_percent}%
-                    </p>
+          {detail?.data && (
+            <div className="border-t border-gray-200 pt-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Penjualan</span>
+                <span className="font-semibold">
+                  {formatRupiah(detail.data.total_price)}
+                </span>
+              </div>
+              {isAdmin && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Total Modal</span>
+                    <span className="font-semibold">
+                      {formatRupiah(detail.data.total_cost)}
+                    </span>
                   </div>
-                </div>
-              </>
-            )}
+                  <div className="bg-green-50 rounded p-2 flex justify-between">
+                    <span className="font-semibold text-green-700">Margin</span>
+                    <div className="text-right">
+                      <p className="font-bold text-green-700">
+                        {formatRupiah(detail.data.total_margin)}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {detail.data.margin_percent}%
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
 
-            <div className="flex justify-between border-t border-gray-200 pt-2">
-              <span>Tunai</span>
-              <span>{formatRupiah(detail.data.cash_amount)}</span>
+              <div className="flex justify-between border-t border-gray-200 pt-2">
+                <span>Tunai</span>
+                <span>{formatRupiah(detail.data.cash_amount)}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>Kembalian</span>
+                <span>{formatRupiah(detail.data.change_amount)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-green-600">
-              <span>Kembalian</span>
-              <span>{formatRupiah(detail.data.change_amount)}</span>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -235,7 +235,7 @@ function TransactionHistory() {
         </div>
       ) : (
         <div className="space-y-2">
-          {transactions.map((tx) => {
+          {(transactions || []).map((tx) => {
             const date = new Date(tx.created_at);
             return (
               <button

@@ -12,6 +12,8 @@ Framework: React (Vite)
 
 Styling: Tailwind CSS.
 
+Component: Shadcn
+
 Database & Auth: Supabase (PostgreSQL).
 
 Server State Management: TanStack Query (v5) — Digunakan untuk caching katalog produk dari server ke memori lokal browser agar pencarian barcode bersifat instan.
@@ -37,13 +39,7 @@ Session & Auto-Logout:
 - Logout (manual/otomatis) hapus localStorage dan panggil queryClient.clear().
 
 4. Database Schema (Supabase)
-SQL
--- Produk
-products (id, barcode UNIQUE, name, price_sell, stock)
--- Transaksi (Header)
-transactions (id, total_price, cash_amount, change_amount, created_at)
--- Detail Transaksi (Items)
-transaction_items (id, transaction_id, product_id, qty, subtotal)
+SQL bisa di akses di file supabase/schema.sql
 
 5. Folder Structure
 .env                          # Credentials Supabase (JANGAN di-commit)
@@ -73,7 +69,9 @@ src/
 └── utils/
     └── formatCurrency.js     # formatRupiah(amount) — pakai Intl.NumberFormat id-ID
 
-6. Commands
+6. Deployment FE menggunakan Vercel
+
+7. Commands
 npm run dev       # Jalankan dev server
 npm run build     # Build production
 npm run preview   # Preview hasil build
