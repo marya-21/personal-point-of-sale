@@ -180,14 +180,53 @@ CREATE TABLE IF NOT EXISTS product_units (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 1c. Tabel untuk menyimpan riwayat perubahan harga produk
+-- Menyimpan histori perubahan harga produk (cost & sell)
+CREATE TABLE IF NOT EXISTS product_price_history (
+    -- Primary Key
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Foreign Key ke produk
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    
+    -- Old values (sebelum perubahan)
+    old_price_cost NUMERIC,
+    old_price_sell NUMERIC,
+    
+    -- New values (setelah perubahan)
+    new_price_cost NUMERIC,
+    new_price_sell NUMERIC,
+    
+    -- Who changed
+    changed_by UUID REFERENCES users(id),
+    
+    -- Timestamps
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    
+    -- Reason for change
+    reason VARCHAR(500)
+);
+ 
+-- Indexes
+CREATE INDEX idx_product_price_history_changed_at ON public.product_price_history USING btree (changed_at)
+CREATE INDEX idx_product_price_history_product_id ON public.product_price_history USING btree (product_id)
+CREATE UNIQUE INDEX product_price_history_pkey ON public.product_price_history USING btree (id)
+
 -- 2. Tabel Transaksi (Header)
 CREATE TABLE IF NOT EXISTS transactions (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cashier_id    UUID,
-  total_price   NUMERIC(15, 2) NOT NULL,
-  cash_amount   NUMERIC(15, 2) NOT NULL,
-  change_amount NUMERIC(15, 2) NOT NULL,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  total_price     NUMERIC(15, 2) NOT NULL,
+  cash_amount     NUMERIC(15, 2) NOT NULL,
+  change_amount   NUMERIC(15, 2) NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  payment_method  VARCHAR(50),
+  notes           TEXT,
+  voided          BOOLEAN DEFAULT FALSE,
+  voided_by       UUID,
+  voided_at       TIMESTAMPTZ,
+  voided_reason   TEXT,
+  total_cost      NUMERIC(15, 2)
 );
 
 -- Jika tabel transactions sudah ada sebelumnya, jalankan ini untuk menambah kolom:
@@ -253,6 +292,114 @@ BEGIN
   WHERE id = p_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 4b2. Function untuk create produk dengan units (DROP lama jika ada)
+DROP FUNCTION IF EXISTS public.create_product_with_units(text, text, numeric, text, numeric, uuid);
+
+CREATE OR REPLACE FUNCTION create_product_with_units(
+  p_name             TEXT,
+  p_total_harga_beli NUMERIC,
+  p_qty_input        NUMERIC,
+  p_stock_unit_name  TEXT,
+  p_units            TEXT,
+  p_user_id          UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_product_id    UUID;
+  v_conversion    NUMERIC;
+  v_price_cost    NUMERIC;
+  v_stock_base    INTEGER;
+  v_units_json    JSONB;
+  v_unit          JSONB;
+BEGIN
+  v_units_json := p_units::JSONB;
+
+  -- VALIDASI
+  IF p_name IS NULL OR p_name = '' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Nama produk tidak boleh kosong'
+    );
+  END IF;
+
+  IF p_qty_input IS NULL OR p_qty_input <= 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Qty harus lebih besar dari 0'
+    );
+  END IF;
+
+  IF p_total_harga_beli IS NULL OR p_total_harga_beli <= 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Total harga beli harus lebih besar dari 0'
+    );
+  END IF;
+
+  IF p_stock_unit_name IS NULL OR p_stock_unit_name = '' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Pilih satuan untuk stok awal'
+    );
+  END IF;
+
+  -- 1. Ambil konversi dari unit yang dipilih
+  SELECT (u->>'conversion')::NUMERIC INTO v_conversion
+  FROM jsonb_array_elements(v_units_json) u
+  WHERE u->>'name' = p_stock_unit_name;
+
+  IF v_conversion IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Unit ' || p_stock_unit_name || ' tidak ditemukan'
+    );
+  END IF;
+
+  -- 2. Hitung stok base dan HPP base
+  v_stock_base := FLOOR(p_qty_input * v_conversion);
+  v_price_cost := ROUND(p_total_harga_beli / v_stock_base, 2);
+
+  -- 3. Insert produk
+  v_product_id := gen_random_uuid();
+  INSERT INTO products (id, name, price_cost, stock, created_by)
+  VALUES (v_product_id, p_name, v_price_cost, v_stock_base, p_user_id);
+
+  -- 4. Insert units
+  FOR v_unit IN SELECT jsonb_array_elements(v_units_json)
+  LOOP
+    INSERT INTO product_units (
+      product_id, name, conversion, is_base,
+      barcode, price_sell
+    ) VALUES (
+      v_product_id,
+      v_unit->>'name',
+      (v_unit->>'conversion')::NUMERIC,
+      COALESCE((v_unit->>'is_base')::BOOLEAN, false),
+      NULLIF(v_unit->>'barcode', ''),
+      (v_unit->>'price_sell')::NUMERIC
+    );
+  END LOOP;
+
+  -- 5. Insert price history
+  INSERT INTO product_price_history (
+    product_id, new_price_cost,
+    changed_by, reason
+  ) VALUES (
+    v_product_id, v_price_cost,
+    p_user_id, 'Initial product creation'
+  );
+
+  RETURN jsonb_build_object(
+    'product_id', v_product_id,
+    'success', true,
+    'price_cost_base', v_price_cost,
+    'stock_base', v_stock_base
+  );
+END;
+$$;
 
 -- 4c. Function untuk update produk dengan unit (menambah stok)
 CREATE FUNCTION update_product_with_units(
@@ -539,13 +686,16 @@ BEGIN
   -- Create transaction
   v_transaction_id := gen_random_uuid();
   INSERT INTO transactions (
-    id, total_price, cash_amount, change_amount, created_at
+    id, total_price, cash_amount, change_amount, created_at, payment_method, notes, total_cost
   ) VALUES (
     v_transaction_id,
     v_total_price,
     p_cash_amount,
     p_cash_amount - v_total_price,
-    CURRENT_TIMESTAMP
+    CURRENT_TIMESTAMP,
+    p_payment_method,
+    p_notes,
+    v_total_cost
   );
 
   -- Insert transaction items & decrement stock
@@ -613,10 +763,8 @@ RETURNS TABLE (
   name TEXT,
   barcode TEXT,
   stock INTEGER,
-  price_sell INTEGER,
-  price_cost INTEGER,
+  price_cost NUMERIC,
   created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ,
   product_units JSONB
 )
 LANGUAGE sql
@@ -625,12 +773,12 @@ AS $$
   SELECT
     p.id,
     p.name,
-    p.sku,
+    (SELECT pu_base.barcode FROM product_units pu_base
+     WHERE pu_base.product_id = p.id AND pu_base.is_base = true AND pu_base.is_deleted = false
+     LIMIT 1),
     p.stock,
-    p.price_sell,
     p.price_cost,
     p.created_at,
-    p.updated_at,
     COALESCE(
       jsonb_agg(
         jsonb_build_object(
@@ -647,7 +795,7 @@ AS $$
   FROM products p
   LEFT JOIN product_units pu ON p.id = pu.product_id AND pu.is_deleted = false
   WHERE p.is_deleted = false
-  GROUP BY p.id, p.name, p.sku, p.stock, p.price_sell, p.price_cost, p.created_at, p.updated_at
+  GROUP BY p.id, p.name, p.stock, p.price_cost, p.created_at
   ORDER BY p.name ASC;
 $$;
 
@@ -736,17 +884,17 @@ $$;
 -- ALTER TABLE transaction_items ENABLE ROW LEVEL SECURITY;
 
 -- 7. Contoh data produk untuk testing
-INSERT INTO products (sku, name, price_cost, price_sell, stock) VALUES
-  ('8991234567890', 'Aqua 600ml', 2000, 3000, 100),
-  ('8997002100104', 'Indomie Goreng', 2500, 3500, 200),
-  ('8999999100110', 'Teh Botol Sosro 350ml', 3000, 4000, 150)
-ON CONFLICT (sku) DO NOTHING;
+INSERT INTO products (name, price_cost, stock) VALUES
+  ('Aqua 600ml', 2000, 100),
+  ('Indomie Goreng', 2500, 200),
+  ('Teh Botol Sosro 350ml', 3000, 150)
+ON CONFLICT DO NOTHING;
 
 -- 8. Contoh data product_units untuk testing
 INSERT INTO product_units (product_id, name, conversion, is_base, barcode, price_sell) VALUES
-  ((SELECT id FROM products WHERE sku = '8991234567890'), 'Pcs', 1, true, '8991234567890', 3000),
-  ((SELECT id FROM products WHERE sku = '8991234567890'), 'Karton (12 Pcs)', 12, false, '8991234567890-KTN', 34800),
-  ((SELECT id FROM products WHERE sku = '8997002100104'), 'Pcs', 1, true, '8997002100104', 3500),
-  ((SELECT id FROM products WHERE sku = '8997002100104'), 'Dus (24 Pcs)', 24, false, '8997002100104-DUS', 78000),
-  ((SELECT id FROM products WHERE sku = '8999999100110'), 'Botol', 1, true, '8999999100110', 4000)
+  ((SELECT id FROM products WHERE name = 'Aqua 600ml' LIMIT 1), 'Pcs', 1, true, '8991234567890', 3000),
+  ((SELECT id FROM products WHERE name = 'Aqua 600ml' LIMIT 1), 'Karton (12 Pcs)', 12, false, '8991234567890-KTN', 34800),
+  ((SELECT id FROM products WHERE name = 'Indomie Goreng' LIMIT 1), 'Pcs', 1, true, '8997002100104', 3500),
+  ((SELECT id FROM products WHERE name = 'Indomie Goreng' LIMIT 1), 'Dus (24 Pcs)', 24, false, '8997002100104-DUS', 78000),
+  ((SELECT id FROM products WHERE name = 'Teh Botol Sosro 350ml' LIMIT 1), 'Botol', 1, true, '8999999100110', 4000)
 ON CONFLICT (barcode) DO NOTHING;

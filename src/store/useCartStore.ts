@@ -6,6 +6,7 @@ interface CartStore {
   addItem: (product: Product, unit: ProductUnit) => string | null
   removeItem: (productId: string, unitId: string) => void
   decreaseQty: (productId: string, unitId: string) => void
+  increaseQty: (productId: string, unitId: string) => void
   clearCart: () => void
   getTotal: () => number
 }
@@ -86,6 +87,30 @@ const useCartStore = create<CartStore>((set, get) => ({
         ),
       })
     }
+  },
+
+  increaseQty: (productId: string, unitId: string) => {
+    const { items } = get()
+    const existing = items.find((item) => item.productId === productId && item.unitId === unitId)
+    if (!existing) return
+
+    const totalBaseQtyInCart = items
+      .filter((item) => item.productId === productId)
+      .reduce((sum, item) => sum + item.qty * item.conversion, 0)
+
+    const product = existing
+    const maxBaseQty = product.stock
+    const requiredBaseQty = totalBaseQtyInCart + product.conversion
+
+    if (requiredBaseQty > maxBaseQty) return
+
+    set({
+      items: items.map((item) =>
+        item.productId === productId && item.unitId === unitId
+          ? { ...item, qty: item.qty + 1 }
+          : item
+      ),
+    })
   },
 
   clearCart: () => set({ items: [] }),

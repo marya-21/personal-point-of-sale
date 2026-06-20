@@ -4,7 +4,7 @@ import { formatRupiah } from '@/utils/formatCurrency'
 import { Button } from '@/ui/button'
 
 function CartItem({ item }: { item: any }) {
-  const { decreaseQty, removeItem } = useCartStore()
+  const { decreaseQty, removeItem, increaseQty } = useCartStore()
 
   return (
     <div className="flex flex-col gap-3 py-3 border-b border-border">
@@ -35,7 +35,7 @@ function CartItem({ item }: { item: any }) {
           </Button>
           <span className="w-6 text-center text-sm font-semibold">{item.qty}</span>
           <Button
-            disabled
+            onClick={() => increaseQty(item.productId, item.unitId)}
             variant="ghost"
             size="icon"
             className="rounded-full hover:bg-secondary hover:text-secondary-foreground"

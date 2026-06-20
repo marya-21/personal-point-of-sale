@@ -202,7 +202,7 @@ function TransactionHistory() {
               </div>
               <div className="bg-green-50 rounded-xl border border-green-200 px-4 py-3">
                 <p className="text-xs text-green-600 font-medium dash-underline-tooltip">
-                  Laba Kotor
+                  Keuntungan
                 </p>
                 <p className="text-2xl font-bold text-green-700 mt-1">
                   {formatRupiah(totalMargin)}
@@ -241,12 +241,19 @@ function TransactionHistory() {
               <button
                 key={tx.id}
                 onClick={() => setSelected(tx)}
-                className="w-full text-left bg-white rounded-xl border border-gray-200 px-4 py-4 hover:border-blue-300 hover:shadow-sm transition-all"
+                className="cursor-pointer w-full text-left bg-white rounded-xl border border-gray-200 px-4 py-4 hover:border-blue-300 hover:shadow-sm transition-all"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">
-                      {formatRupiah(tx.total_price)}
+                      {tx.transaction_items?.length > 0
+                        ? tx.transaction_items
+                          .map((item: any) => `${item.products?.name || "—"}`)
+                          .join(", ")
+                        : "—"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {tx.transaction_items?.length} item
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {date.toLocaleString("id-ID", {
@@ -256,23 +263,15 @@ function TransactionHistory() {
                     </p>
                   </div>
                   <div className="text-right space-y-1">
+                    <p className="font-semibold text-gray-900">
+                      {formatRupiah(tx.total_price)}
+                    </p>
                     <div className="text-xs text-gray-600">
                       <p>Tunai {formatRupiah(tx.cash_amount)}</p>
                       <p className="text-green-600">
                         Kembalian {formatRupiah(tx.change_amount)}
                       </p>
                     </div>
-
-                    {isAdmin && (
-                      <div className="bg-green-50 rounded px-2 py-1">
-                        <p className="text-xs font-semibold text-green-700">
-                          {formatRupiah(tx.total_margin || 0)}
-                        </p>
-                        <p className="text-xs text-green-600">
-                          {tx.margin_percent || 0}%
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </button>

@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
 async function fetchTransactions({ dateFrom, dateTo, cashierId }) {
   let query = supabase
     .from("transactions")
-    .select("*")
+    .select("*, transaction_items(id, qty, products(id, name))")
     .order("created_at", { ascending: false })
     .limit(100);
 
