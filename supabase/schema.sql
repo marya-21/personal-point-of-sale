@@ -43,6 +43,22 @@ CREATE TABLE IF NOT EXISTS users (
   is_active     BOOLEAN NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ DEFAULT now()
 );
+-- 0e. Tabel Sessions (untuk menyimpan session login)
+CREATE TABLE IF NOT EXISTS sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_activity TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions USING btree (expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions USING btree (token_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions USING btree (user_id);
 
 -- =============================================
 -- SEED DATA: Roles
@@ -161,6 +177,7 @@ CREATE TABLE IF NOT EXISTS products (
   price_cost NUMERIC(15, 2) DEFAULT 0,
   stock INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   updated_by UUID,
   created_by UUID,
   is_deleted BOOLEAN DEFAULT FALSE
@@ -181,37 +198,38 @@ CREATE TABLE IF NOT EXISTS product_units (
 );
 
 -- 1c. Tabel untuk menyimpan riwayat perubahan harga produk
--- Menyimpan histori perubahan harga produk (cost & sell)
 CREATE TABLE IF NOT EXISTS product_price_history (
-    -- Primary Key
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
-    -- Foreign Key ke produk
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    
-    -- Old values (sebelum perubahan)
     old_price_cost NUMERIC,
     old_price_sell NUMERIC,
-    
-    -- New values (setelah perubahan)
     new_price_cost NUMERIC,
     new_price_sell NUMERIC,
-    
-    -- Who changed
     changed_by UUID REFERENCES users(id),
-    
-    -- Timestamps
     changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    -- Reason for change
     reason VARCHAR(500)
 );
- 
+
 -- Indexes
-CREATE INDEX idx_product_price_history_changed_at ON public.product_price_history USING btree (changed_at)
-CREATE INDEX idx_product_price_history_product_id ON public.product_price_history USING btree (product_id)
-CREATE UNIQUE INDEX product_price_history_pkey ON public.product_price_history USING btree (id)
+CREATE INDEX IF NOT EXISTS idx_product_price_history_changed_at ON product_price_history USING btree (changed_at);
+
+-- 1d. Tabel Stock History
+CREATE TABLE IF NOT EXISTS stock_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  quantity_before INTEGER NOT NULL,
+  quantity_after INTEGER NOT NULL,
+  reference_type VARCHAR(50) NOT NULL,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  unit_id UUID REFERENCES product_units(id),
+  qty_input NUMERIC,
+  harga_beli_input NUMERIC,
+  harga_beli_base NUMERIC,
+  hpp_before NUMERIC,
+  hpp_after NUMERIC
+);
 
 -- 2. Tabel Transaksi (Header)
 CREATE TABLE IF NOT EXISTS transactions (
@@ -229,9 +247,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   total_cost      NUMERIC(15, 2)
 );
 
--- Jika tabel transactions sudah ada sebelumnya, jalankan ini untuk menambah kolom:
--- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS cashier_id UUID;
-
 -- 3. Tabel Item Transaksi (Detail)
 CREATE TABLE IF NOT EXISTS transaction_items (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -245,7 +260,6 @@ CREATE TABLE IF NOT EXISTS transaction_items (
 );
 
 -- 4. Function untuk mengurangi stok secara atomik
--- Ini mencegah race condition jika 2 kasir scan produk bersamaan
 CREATE OR REPLACE FUNCTION decrement_stock(product_id UUID, amount INTEGER)
 RETURNS void AS $$
 BEGIN
@@ -272,7 +286,6 @@ DECLARE
   v_unit_conversion NUMERIC;
   v_base_qty NUMERIC;
 BEGIN
-  -- Cari conversion dari unit yang dipilih
   SELECT conversion INTO v_unit_conversion
   FROM product_units
   WHERE product_id = p_id AND name = p_stock_unit_name;
@@ -283,7 +296,6 @@ BEGIN
 
   v_base_qty := p_qty_input * v_unit_conversion;
 
-  -- Update stok dan opsional harga beli
   UPDATE products
   SET
     stock = stock + v_base_qty,
@@ -293,9 +305,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 4b2. Function untuk create produk dengan units (DROP lama jika ada)
-DROP FUNCTION IF EXISTS public.create_product_with_units(text, text, numeric, text, numeric, uuid);
-
+-- 4c. Function untuk create produk dengan units
 CREATE OR REPLACE FUNCTION create_product_with_units(
   p_name             TEXT,
   p_total_harga_beli NUMERIC,
@@ -401,19 +411,19 @@ BEGIN
 END;
 $$;
 
--- 4c. Function untuk update produk dengan unit (menambah stok)
-CREATE FUNCTION update_product_with_units(
-  p_product_id        uuid,
-  p_name              text,
-  p_units_to_upsert   text,
-  p_units_to_delete   text,
-  p_user_id           uuid
+-- 4d. Function untuk update produk dengan unit
+CREATE OR REPLACE FUNCTION update_product_with_units(
+  p_product_id        UUID,
+  p_name              TEXT,
+  p_units_to_upsert   TEXT,
+  p_units_to_delete   TEXT,
+  p_user_id           UUID
 ) 
-RETURNS jsonb 
+RETURNS JSONB 
 LANGUAGE plpgsql 
 AS $$
 DECLARE
-  v_unit jsonb;
+  v_unit JSONB;
 BEGIN
   -- VALIDASI
   IF p_name IS NULL OR p_name = '' THEN
@@ -465,12 +475,12 @@ BEGIN
     WHERE id = (v_unit->>'id')::uuid;
   END LOOP;
 
-  -- 4. Audit log
-  INSERT INTO audit_logs (user_id, action, resource_type, resource_id, new_value)
-  VALUES (
-    p_user_id, 'update_product', 'products', p_product_id,
-    jsonb_build_object('name', p_name)
-  );
+  -- 4. Audit log - comment out if audit_logs table doesn't exist yet
+  -- INSERT INTO audit_logs (user_id, action, resource_type, resource_id, new_value)
+  -- VALUES (
+  --   p_user_id, 'update_product', 'products', p_product_id,
+  --   jsonb_build_object('name', p_name)
+  -- );
 
   RETURN jsonb_build_object(
     'success', true,
@@ -478,10 +488,8 @@ BEGIN
   );
 END;
 $$;
-$$ LANGUAGE plpgsql;
 
-
--- 4d. Function untuk restock produk dengan perhitungan HPP (Harga Pokok Penjualan) baru menggunakan metode Weighted Average
+-- 4e. Function untuk restock produk dengan perhitungan HPP (Weighted Average)
 CREATE OR REPLACE FUNCTION process_restock(
   p_product_id       UUID,
   p_unit_id          UUID,
@@ -559,31 +567,31 @@ BEGIN
   WHERE id = p_product_id;
 
   -- 7. Catat ke stock_history
- INSERT INTO stock_history (
-  product_id,
-  quantity_before,
-  quantity_after,
-  reference_type,
-  created_by,
-  unit_id,
-  qty_input,
-  harga_beli_input,
-  harga_beli_base,
-  hpp_before,
-  hpp_after
-) VALUES (
-  p_product_id,
-  v_stock_lama,
-  v_stock_lama + v_qty_base,
-  'restock',
-  p_user_id,
-  p_unit_id,
-  p_qty_input,                                        
-  p_total_harga_beli,                                 -- total bayar ke supplier
-  ROUND(p_total_harga_beli / v_qty_base, 2),          -- harga beli per satuan dasar (pcs)
-  ROUND(v_hpp_lama, 2),                               -- HPP sebelum restock
-  ROUND(v_hpp_baru, 2)                                -- HPP setelah restock
-);
+  INSERT INTO stock_history (
+    product_id,
+    quantity_before,
+    quantity_after,
+    reference_type,
+    created_by,
+    unit_id,
+    qty_input,
+    harga_beli_input,
+    harga_beli_base,
+    hpp_before,
+    hpp_after
+  ) VALUES (
+    p_product_id,
+    v_stock_lama,
+    v_stock_lama + v_qty_base,
+    'restock',
+    p_user_id,
+    p_unit_id,
+    p_qty_input,                                        
+    p_total_harga_beli,
+    ROUND(p_total_harga_beli / v_qty_base, 2),
+    ROUND(v_hpp_lama, 2),
+    ROUND(v_hpp_baru, 2)
+  );
 
   RETURN QUERY SELECT
     TRUE,
@@ -595,7 +603,7 @@ BEGIN
 END;
 $$;
 
--- 4e. RPC Function untuk checkout dengan snapshot harga dan HPP
+-- 4f. RPC Function untuk checkout dengan snapshot harga dan HPP
 CREATE OR REPLACE FUNCTION process_checkout_with_margins(
   p_items TEXT,
   p_cash_amount DECIMAL,
@@ -869,7 +877,6 @@ AS $$
   GROUP BY p.id, p.name, p.stock, p.price_cost;
 $$;
 
-
 -- 5. Migration untuk tabel yang sudah ada (jalankan jika table sudah dibuat sebelumnya):
 -- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS unit_id UUID REFERENCES product_units(id);
 -- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS price_sell_snapshot NUMERIC(15, 2) DEFAULT 0;
@@ -888,7 +895,7 @@ INSERT INTO products (name, price_cost, stock) VALUES
   ('Aqua 600ml', 2000, 100),
   ('Indomie Goreng', 2500, 200),
   ('Teh Botol Sosro 350ml', 3000, 150)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- 8. Contoh data product_units untuk testing
 INSERT INTO product_units (product_id, name, conversion, is_base, barcode, price_sell) VALUES
