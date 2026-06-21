@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { SquarePen, Trash, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
@@ -245,6 +246,7 @@ function Inventory() {
   const [restockingProduct, setRestockingProduct] = useState<(ProductV2 & { id: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { user } = useAuth();
   const canCreate = usePermission("create_product");
@@ -291,6 +293,17 @@ function Inventory() {
     createMutation.reset();
     updateMutation.reset();
   };
+
+  useEffect(() => {
+    if (searchParams.get("modal") === "add") {
+      setEditingProduct(null);
+      setShowModal(true);
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("modal");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const showSuccess = (type: "create" | "update") => {
     const message =
@@ -455,7 +468,7 @@ function Inventory() {
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
-                  <p>Tidak ada produk ditemukan</p>
+                  <p>Tidak ada produk, tambah produk untuk memulai</p>
                 </div>
               ) : (
                 <Table>

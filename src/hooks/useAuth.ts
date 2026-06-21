@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { AuthContext } from '../auth/AuthContext';
+import { AuthContext } from '@/auth/AuthContext';
 
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -9,7 +9,7 @@ export function useAuth() {
   return context;
 }
 
-export function usePermission(permissionName) {
+export function usePermission(permissionName: string) {
   const { hasPermission } = useAuth();
   return hasPermission(permissionName);
 }

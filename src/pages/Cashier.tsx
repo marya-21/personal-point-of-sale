@@ -1,19 +1,20 @@
 import { useState, FormEvent } from "react";
-import { useCheckout } from "../services/checkoutService";
-import { useProducts } from "../services/productService";
-import useCartStore from "../store/useCartStore";
-import { formatRupiah, formatNumber } from "../utils/formatCurrency";
-import Cart from "../components/pos/Cart";
-import ScannerListener from "../components/pos/ScannerListener";
+import { useNavigate } from "react-router-dom";
+import { useCheckout } from "@/services/checkoutService";
+import { useProducts } from "@/services/productService";
+import useCartStore from "@/store/useCartStore";
+import { formatRupiah, formatNumber } from "@/utils/formatCurrency";
+import Cart from "@/components/pos/Cart";
+import ScannerListener from "@/components/pos/ScannerListener";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { ButtonGroup } from "@/ui/button-group";
 import { Input } from "@/ui/input";
-import { usePermission } from "../hooks/useAuth";
+import { usePermission } from "@/hooks/useAuth";
 import { ShoppingCart } from "lucide-react";
 import { ProductV2 } from "@/types";
 
-function CheckoutModal({ isOpen, onClose, total, onSuccess }) {
+function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
   const [cashAmount, setCashAmount] = useState("");
   const { items, clearCart } = useCartStore();
   const checkoutMutation = useCheckout();
@@ -219,7 +220,9 @@ function Cashier() {
   const [notFoundBarcode, setNotFoundBarcode] = useState("");
   const [stockError, setStockError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
   const { getTotal, addItem } = useCartStore();
+  const isAdmin = usePermission("view_all_transactions");
 
   // Use service hook untuk products
   const { data: products = [], isLoading, isError } = useProducts();
@@ -243,6 +246,30 @@ function Cashier() {
     setShowCheckout(false);
     setSuccessData(data);
   };
+
+  // console.log(isAdmin, 'isAdmin')
+
+  const ProductNotFoundMessage = () =>
+    isAdmin ? (
+      <div className="flex flex-col items-center mt-8 space-y-3">
+        <p className="text-center">
+          <span className="font-medium">Produk tidak ditemukan</span> <br />
+          <span className="text-gray-400 text-sm">klik tombol dibawah untuk menambah produk baru</span>
+        </p>
+        <Button
+          variant="primary"
+          className="w-40"
+          onClick={() => navigate("/inventory?modal=add")}
+        >
+          + Tambah Produk
+        </Button>
+      </div>
+    ) : (
+      <p className="text-center">
+        <span className="font-medium">Produk tidak ditemukan</span> <br />
+        <span className="text-gray-400 text-sm">hubungi admin untuk menambah produk yang anda cari</span>
+      </p >
+    );
 
   if (isLoading) {
     return (
@@ -299,9 +326,7 @@ function Cashier() {
 
         <div className="flex-1 overflow-y-auto mt-3 space-y-2">
           {filtered.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm mt-8">
-              Produk tidak ditemukan
-            </p>
+            <ProductNotFoundMessage />
           ) : (
             filtered.map((product: ProductV2) => (
               <div
