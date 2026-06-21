@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 
-async function fetchTransactions({ dateFrom, dateTo, cashierId }) {
+async function fetchTransactions({ dateFrom, dateTo }) {
   let query = supabase
     .from("transactions")
     .select("*, transaction_items(id, qty, products(id, name))")
@@ -10,17 +10,16 @@ async function fetchTransactions({ dateFrom, dateTo, cashierId }) {
 
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  if (cashierId) query = query.eq("created_by", cashierId);
 
   const { data, error } = await query;
   if (error) throw error;
   return data;
 }
 
-export const useTransactions = (dateFrom, dateTo, cashierId) => {
+export const useTransactions = (dateFrom, dateTo) => {
   return useQuery({
-    queryKey: ["transactions", dateFrom, dateTo, cashierId],
-    queryFn: () => fetchTransactions({ dateFrom, dateTo, cashierId }),
+    queryKey: ["transactions", dateFrom, dateTo],
+    queryFn: () => fetchTransactions({ dateFrom, dateTo }),
     enabled: !!dateFrom && !!dateTo,
   });
 };

@@ -238,6 +238,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   cash_amount     NUMERIC(15, 2) NOT NULL,
   change_amount   NUMERIC(15, 2) NOT NULL,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
+  created_by      UUID REFERENCES users(id),
   payment_method  VARCHAR(50),
   notes           TEXT,
   voided          BOOLEAN DEFAULT FALSE,
@@ -694,13 +695,14 @@ BEGIN
   -- Create transaction
   v_transaction_id := gen_random_uuid();
   INSERT INTO transactions (
-    id, total_price, cash_amount, change_amount, created_at, payment_method, notes, total_cost
+    id, total_price, cash_amount, change_amount, created_at, created_by, payment_method, notes, total_cost
   ) VALUES (
     v_transaction_id,
     v_total_price,
     p_cash_amount,
     p_cash_amount - v_total_price,
     CURRENT_TIMESTAMP,
+    p_user_id,
     p_payment_method,
     p_notes,
     v_total_cost
@@ -884,6 +886,7 @@ $$;
 -- ALTER TABLE transactions ALTER COLUMN total_price TYPE NUMERIC(15, 2);
 -- ALTER TABLE transactions ALTER COLUMN cash_amount TYPE NUMERIC(15, 2);
 -- ALTER TABLE transactions ALTER COLUMN change_amount TYPE NUMERIC(15, 2);
+-- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id);
 
 -- 6. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
 -- ALTER TABLE products ENABLE ROW LEVEL SECURITY;

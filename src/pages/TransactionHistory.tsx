@@ -120,16 +120,15 @@ function TransactionHistory() {
   const [dateTo, setDateTo] = useState(today);
   const [selected, setSelected] = useState(null);
 
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const isAdmin = hasPermission("view_all_transactions");
-  const cashierId = isAdmin ? null : user?.id;
 
   const {
     data: transactions,
     isLoading,
     isError,
     refetch,
-  } = useTransactions(dateFrom, dateTo, cashierId);
+  } = useTransactions(dateFrom, dateTo);
 
   const totalRevenue =
     transactions?.reduce((sum, t) => sum + t.total_price, 0) ?? 0;
