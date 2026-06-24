@@ -4,15 +4,35 @@ import { Trash, ChevronRight, ChevronLeft } from "lucide-react";
 import { formatNumber, } from "@/utils/formatCurrency";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/ui/table";
 import { ProductV2, ProductUnit } from "@/types";
+
+// Local UI-only extended unit type
+interface UnitRow extends ProductUnit {
+  relativeConversion: number;
+  referenceUnitId: string;
+}
+
+// Compute absolute conversion by walking the reference chain
+function computeAbsolute(
+  unitId: string,
+  allUnits: UnitRow[],
+  visited = new Set<string>()
+): number {
+  if (visited.has(unitId)) return 1; // Cycle detected
+  visited.add(unitId);
+
+  const unit = allUnits.find(u => u.id === unitId);
+  if (!unit) return 1;
+
+  // Base unit or no reference
+  if (unit.is_base || unit.referenceUnitId === "") return 1;
+
+  const refUnit = allUnits.find(u => u.id === unit.referenceUnitId);
+  if (!refUnit) return 1;
+
+  const refAbsolute = computeAbsolute(unit.referenceUnitId, allUnits, visited);
+  return unit.relativeConversion * refAbsolute;
+}
 
 interface ProductFormProps {
   initialData?: ProductV2;
@@ -46,16 +66,32 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     },
   });
 
-  const [units, setUnits] = useState<ProductUnit[]>(initialData ? initialData.product_units : [
-    {
-      id: "temp-1",
-      name: "",
-      conversion: 1,
-      is_base: true,
-      barcode: "",
-      price_sell: 0,
-    },
-  ]);
+  const baseUnitId = "temp-1";
+  const [units, setUnits] = useState<UnitRow[]>(() => {
+    if (initialData && initialData.product_units.length > 0) {
+      // Edit mode: back-calculate UI fields from absolute conversions
+      const baseUnit = initialData.product_units.find(u => u.is_base);
+      return initialData.product_units.map(u => ({
+        ...u,
+        relativeConversion: u.conversion,
+        referenceUnitId: u.is_base ? "" : (baseUnit?.id || ""),
+      }));
+    }
+
+    // Create mode: new empty base unit
+    return [
+      {
+        id: baseUnitId,
+        name: "",
+        conversion: 1,
+        is_base: true,
+        barcode: "",
+        price_sell: 0,
+        relativeConversion: 1,
+        referenceUnitId: "",
+      },
+    ];
+  });
 
   const [stockUnitId, setStockUnitId] = useState<string>("temp-1");
 
@@ -66,7 +102,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   const baseUnit = units.find(u => u.is_base) ?? units[0];
   const baseQtyPreview = stock_qty * selectedStockUnit.conversion;
 
-  const handleUnitChange = (index: number, field: keyof ProductUnit, value: any) => {
+  const handleUnitChange = (index: number, field: keyof UnitRow, value: any) => {
     const newUnits = [...units];
     newUnits[index] = { ...newUnits[index], [field]: value };
     setUnits(newUnits);
@@ -74,13 +110,15 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   };
 
   const handleAddUnit = () => {
-    const newUnit: ProductUnit = {
+    const newUnit: UnitRow = {
       id: `temp-${Date.now()}`,
       name: "",
       conversion: 1,
       is_base: false,
       barcode: "",
       price_sell: 0,
+      relativeConversion: 1,
+      referenceUnitId: "", // Empty, user must select
     };
     setUnits([...units, newUnit]);
   };
@@ -88,10 +126,25 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   const handleRemoveUnit = (index: number) => {
     if (units.length > 1) {
       const removedUnit = units[index];
-      setUnits(units.filter((_, i) => i !== index));
+      const baseUnit = units.find(u => u.is_base) || units[0];
+
+      // Don't allow deleting base unit
+      if (removedUnit.is_base) return;
+
+      // Reassign units that reference the removed unit - reset to empty (user must re-select)
+      const updatedUnits = units
+        .filter((_, i) => i !== index)
+        .map(u =>
+          u.referenceUnitId === removedUnit.id
+            ? { ...u, referenceUnitId: "", relativeConversion: 1 }
+            : u
+        );
+
+      setUnits(updatedUnits);
+
       // Reset stockUnitId if removed unit was selected
       if (removedUnit.id === stockUnitId) {
-        setStockUnitId("temp-1");
+        setStockUnitId(baseUnit.id);
       }
     }
   };
@@ -101,16 +154,22 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   const validateUnits = (): boolean => {
     setUnitErrors("");
 
-    // Cek setiap unit harus punya unit name, conversion, harga jual
+    // Cek setiap unit harus punya unit name, relativeConversion, harga jual, dan reference (non-base)
     for (let i = 0; i < units.length; i++) {
       const unit = units[i];
       if (!unit.name.trim()) {
         setUnitErrors(`Baris ${i + 1}: Nama satuan tidak boleh kosong`);
         return false;
       }
-      if (!unit.is_base && unit.conversion <= 0) {
-        setUnitErrors(`Baris ${i + 1}: Isi/Conv harus > 0`);
-        return false;
+      if (!unit.is_base) {
+        if (!unit.referenceUnitId) {
+          setUnitErrors(`Baris ${i + 1}: Harus pilih satuan acuan`);
+          return false;
+        }
+        if (unit.relativeConversion < 1) {
+          setUnitErrors(`Baris ${i + 1}: Isi harus ≥ 1`);
+          return false;
+        }
       }
       if (unit.price_sell <= 0) {
         setUnitErrors(`Baris ${i + 1}: Harga jual harus diisi`);
@@ -157,7 +216,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       const unitsPayload = units.map(u => ({
         ...(u.id && !u.id.startsWith('temp-') && { id: u.id }),
         name: toTitleCase(u.name),
-        conversion: u.conversion,
+        conversion: computeAbsolute(u.id, units),
         is_base: u.is_base,
         barcode: u.barcode,
         price_sell: u.price_sell,
@@ -185,7 +244,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       const selectedUnitName = toTitleCase(selectedStockUnit.name || "");
       const unitsPayload = units.map(u => ({
         name: toTitleCase(u.name),
-        conversion: u.conversion,
+        conversion: computeAbsolute(u.id, units),
         is_base: u.is_base,
         barcode: u.barcode,
         price_sell: u.price_sell,
@@ -202,7 +261,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   });
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-4">
+    <form onSubmit={handleFormSubmit} className="space-y-4 max-h-[calc(100vh-150px)] overflow-y-auto">
       {/* Stepper (only for create mode) */}
       {!isEditMode && (
         <div className="mb-6 pb-4 border-b border-gray-200">
@@ -249,96 +308,182 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
               </>
             }
           />
-          {/* SKU/Unit Table */}
+          {/* Units Cards */}
           <div className="mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900">Varian Unit</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">Satuan Jual</h3>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 onClick={handleAddUnit}
               >
-                + Tambah Unit
+                + Tambah Satuan
               </Button>
             </div>
 
-            <div className="border border-gray-200 rounded-lg overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader className="bg-primary">
-                  <TableRow className="hover:bg-primary border-b-primary">
-                    <TableHead className="text-primary-foreground">Unit</TableHead>
-                    <TableHead className="text-primary-foreground">Isi/Conv</TableHead>
-                    <TableHead className="text-primary-foreground">Barcode</TableHead>
-                    <TableHead className="text-primary-foreground">H. Jual (Rp)</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {units.map((unit, index) => (
-                    <TableRow key={unit.id}>
-                      <TableCell className="py-2">
+            <div className="space-y-3">
+              {(() => {
+                // Compute ALL row errors first (to detect all duplicates)
+                const rowErrors: Record<string, string> = {};
+                const nameCounts: Record<string, string[]> = {}; // Map name -> array of unit ids
+
+                // First pass: count all names and collect unit ids
+                for (const u of units) {
+                  const nameTrimmed = u.name.trim().toLowerCase();
+                  if (!u.name.trim()) {
+                    rowErrors[u.id] = "Nama satuan tidak boleh kosong";
+                  } else {
+                    if (!nameCounts[nameTrimmed]) {
+                      nameCounts[nameTrimmed] = [];
+                    }
+                    nameCounts[nameTrimmed].push(u.id);
+                  }
+                }
+
+                // Second pass: mark ALL units with duplicate names
+                for (const [name, unitIds] of Object.entries(nameCounts)) {
+                  if (unitIds.length > 1) {
+                    for (const id of unitIds) {
+                      rowErrors[id] = "Nama satuan sudah digunakan";
+                    }
+                  }
+                }
+
+                // Third pass: check other validations
+                for (const u of units) {
+                  if (!u.is_base) {
+                    if (!u.referenceUnitId) {
+                      rowErrors[u.id] = (rowErrors[u.id] ? rowErrors[u.id] + "; " : "") + "Harus pilih satuan acuan";
+                    }
+                    if (u.relativeConversion < 1) {
+                      rowErrors[u.id] = (rowErrors[u.id] ? rowErrors[u.id] + "; " : "") + "Isi harus ≥ 1";
+                    }
+                  }
+                }
+
+                return units.map((unit, index) => {
+                  const availableRefs = units.slice(0, index);
+                  const absoluteConv = computeAbsolute(unit.id, units);
+                  const baseUnit = units.find(u => u.is_base) || units[0];
+                  const hasError = rowErrors[unit.id];
+
+                return (
+                  <div
+                    key={unit.id}
+                    className={`border rounded-lg p-4 transition-colors ${
+                      hasError
+                        ? "border-red-400 bg-red-50"
+                        : "border-gray-300 bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
                         <input
                           type="text"
                           value={unit.name}
                           onChange={(e) => handleUnitChange(index, "name", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                           placeholder={unit.is_base ? "PCS/Btg/Ons" : "Box, Pack, Lusin"}
                         />
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <input
-                          type="number"
-                          value={unit.conversion}
-                          onChange={(e) => handleUnitChange(index, "conversion", parseInt(e.target.value) || 1)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                          min="1"
-                          disabled={unit.is_base}
-                        />
-                      </TableCell>
-                      <TableCell className="py-2">
+                      </div>
+                      {!unit.is_base && (
+                        <Button
+                          type="button"
+                          onClick={() => handleRemoveUnit(index)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-red-600 hover:bg-red-100 ml-2 flex-shrink-0"
+                          title="Hapus satuan"
+                        >
+                          <Trash size={18} />
+                        </Button>
+                      )}
+                    </div>
+
+                    {unit.is_base && (
+                      <div className="mb-3 inline-block bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide">
+                        Satuan Terkecil
+                      </div>
+                    )}
+
+                    {!unit.is_base && (
+                      <div className="mb-3 space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span>1</span>
+                          <span className="font-medium">{unit.name || "satuan ini"}</span>
+                          <span>berisi</span>
+                          <input
+                            type="number"
+                            value={unit.relativeConversion}
+                            onChange={(e) => handleUnitChange(index, "relativeConversion", Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                            min="1"
+                          />
+                          <select
+                            value={unit.referenceUnitId}
+                            onChange={(e) => handleUnitChange(index, "referenceUnitId", e.target.value)}
+                            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                          >
+                            <option value="">Pilih satuan acuan</option>
+                            {availableRefs.map(ref => (
+                              <option key={ref.id} value={ref.id}>
+                                {ref.name || "(belum diberi nama)"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="text-sm text-gray-600 italic">
+                          = {absoluteConv} {baseUnit.name || "satuan terkecil"} (dihitung otomatis)
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Harga Jual</label>
+                        <div className="flex items-center">
+                          <span className="text-gray-600 mr-2">Rp</span>
+                          <input
+                            type="text"
+                            value={formatNumber(unit.price_sell)}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^0-9]/g, "");
+                              handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                            inputMode="numeric"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Barcode (opsional)</label>
                         <input
                           type="text"
                           value={unit.barcode}
                           onChange={(e) => handleUnitChange(index, "barcode", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                           placeholder="8991234567890"
                         />
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <input
-                          type="text"
-                          value={formatNumber(unit.price_sell)}
-                          onChange={(e) => {
-                            const raw = e.target.value.replace(/[^0-9]/g, "");
-                            handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
-                          inputMode="numeric"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 text-center">
-                        <Button
-                          type="button"
-                          onClick={() => handleRemoveUnit(index)}
-                          disabled={unit.is_base}
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-muted hover:bg-destructive rounded-full"
-                          title="Hapus unit"
-                        >
-                          <Trash size={18} />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </div>
+
+                    {hasError && (
+                      <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-700">
+                        {hasError}
+                      </div>
+                    )}
+                  </div>
+                );
+                });
+              })()}
             </div>
 
             {unitErrors && (
-              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-600">
-                {unitErrors}
+              <div className="mt-4 p-3 bg-red-50 border border-red-400 rounded text-sm text-red-700 font-medium flex items-start gap-2">
+                <span className="text-lg leading-none">⚠</span>
+                <span>{unitErrors}</span>
               </div>
             )}
           </div>
@@ -392,7 +537,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
             </div>
             {selectedStockUnit.id !== baseUnit.id && (
               <p className="text-xs text-gray-600 mt-2">
-                = {baseQtyPreview} {baseUnit.name} (satuan dasar)
+                = {baseQtyPreview} {baseUnit.name} (satuan terkecil)
               </p>
             )}
           </div>
@@ -448,17 +593,60 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
         >
           Batal
         </Button>
-        {!isEditMode && step === 1 && (
-          <Button
-            type="button"
-            variant="primary"
-            className="flex-1"
-            onClick={handleNextStep}
-          >
-            Lanjut
-            <ChevronRight size={18} className="ml-1" />
-          </Button>
-        )}
+        {!isEditMode && step === 1 && (() => {
+          // Compute inline errors for "Lanjut" button disabled state
+          const rowErrors: Record<string, string> = {};
+          const nameCounts: Record<string, string[]> = {};
+
+          // First pass: count names and collect unit ids
+          for (const u of units) {
+            const nameTrimmed = u.name.trim().toLowerCase();
+            if (!u.name.trim()) {
+              rowErrors[u.id] = "Nama tidak boleh kosong";
+            } else {
+              if (!nameCounts[nameTrimmed]) {
+                nameCounts[nameTrimmed] = [];
+              }
+              nameCounts[nameTrimmed].push(u.id);
+            }
+          }
+
+          // Second pass: mark ALL duplicates
+          for (const [, unitIds] of Object.entries(nameCounts)) {
+            if (unitIds.length > 1) {
+              for (const id of unitIds) {
+                rowErrors[id] = "Nama sudah digunakan";
+              }
+            }
+          }
+
+          // Third pass: check other validations
+          for (const u of units) {
+            if (!u.is_base) {
+              if (!u.referenceUnitId) {
+                rowErrors[u.id] = (rowErrors[u.id] ? rowErrors[u.id] + "; " : "") + "Harus pilih satuan acuan";
+              }
+              if (u.relativeConversion < 1) {
+                rowErrors[u.id] = (rowErrors[u.id] ? rowErrors[u.id] + "; " : "") + "Isi harus ≥ 1";
+              }
+            }
+          }
+
+          const hasErrors = Object.keys(rowErrors).length > 0 || units.length === 0;
+
+          return (
+            <Button
+              type="button"
+              variant="primary"
+              className="flex-1"
+              onClick={handleNextStep}
+              disabled={hasErrors}
+            >
+              Lanjut
+              <ChevronRight size={18} className="ml-1" />
+            </Button>
+          );
+        })()}
         {(isEditMode || step === 2) && (
           <Button
             type="submit"

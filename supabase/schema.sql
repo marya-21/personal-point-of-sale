@@ -880,12 +880,6 @@ AS $$
 $$;
 
 -- 5. Migration untuk tabel yang sudah ada (jalankan jika table sudah dibuat sebelumnya):
--- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS unit_id UUID REFERENCES product_units(id);
--- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS price_sell_snapshot NUMERIC(15, 2) DEFAULT 0;
--- ALTER TABLE transaction_items ADD COLUMN IF NOT EXISTS hpp_snapshot NUMERIC(15, 2) DEFAULT 0;
--- ALTER TABLE transactions ALTER COLUMN total_price TYPE NUMERIC(15, 2);
--- ALTER TABLE transactions ALTER COLUMN cash_amount TYPE NUMERIC(15, 2);
--- ALTER TABLE transactions ALTER COLUMN change_amount TYPE NUMERIC(15, 2);
 -- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id);
 
 -- 6. Enable Row Level Security (opsional, aktifkan jika pakai Auth)
