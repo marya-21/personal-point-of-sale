@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod";
-import { Trash, ChevronRight, ChevronLeft } from "lucide-react";
+import { Trash, ChevronRight, ChevronLeft, Lock } from "lucide-react";
 import { formatNumber, } from "@/utils/formatCurrency";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProductV2, ProductUnit } from "@/types";
 
 // Local UI-only extended unit type
@@ -37,6 +45,7 @@ function computeAbsolute(
 
 interface ProductFormProps {
   initialData?: ProductV2;
+  lockedUnitIds?: Set<string>;
   onCancel: () => void;
   onSubmit: (data: {
     p_name: string;
@@ -69,7 +78,7 @@ const toTitleCase = (str: string) =>
   str.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 
 //  Form for create/edit product with margin calculation
-function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice }: ProductFormProps) {
+function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmit, isPending, canEditPrice }: ProductFormProps) {
   const isEditMode = !!initialData;
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -123,6 +132,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   };
 
   const [stockUnitId, setStockUnitId] = useState<string>("temp-1");
+  const [deleteBlockedUnit, setDeleteBlockedUnit] = useState<string | null>(null);
 
   const stock_qty = Number(watch("stock")) || 0;
   const total_purchase_cost = Number(watch("price_cost")) || 0;
@@ -162,6 +172,12 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       // Don't allow deleting base unit
       if (removedUnit.is_base) return;
 
+      // If unit has transactions, show alert instead of deleting
+      if (lockedUnitIds.has(removedUnit.id)) {
+        setDeleteBlockedUnit(removedUnit.name || "Satuan ini");
+        return;
+      }
+
       // Reassign units that reference the removed unit - reset to empty (user must re-select)
       const updatedUnits = units
         .filter((_, i) => i !== index)
@@ -199,7 +215,8 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
         setUnitErrors(`Baris ${i + 1}: Nama satuan tidak boleh kosong`);
         return false;
       }
-      if (!unit.is_base) {
+      // Skip conversion validation for locked units (already has valid values)
+      if (!unit.is_base && !lockedUnitIds.has(unit.id)) {
         if (!unit.referenceUnitId) {
           setUnitErrors(`Baris ${i + 1}: Harus pilih satuan acuan`);
           return false;
@@ -401,6 +418,8 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                   const availableRefs = units.slice(0, index);
                   const absoluteConv = computeAbsolute(unit.id, units);
                   const baseUnit = units.find(u => u.is_base) || units[0];
+                  const isConvLocked = unit.is_base || lockedUnitIds.has(unit.id);
+                  const hasTransaction = lockedUnitIds.has(unit.id);
 
                   return (
                     <div
@@ -430,10 +449,14 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                             onClick={() => handleRemoveUnit(index)}
                             variant="ghost"
                             size="icon"
-                            className="text-destructive hover:text-red-600 hover:bg-red-100 ml-2 flex-shrink-0"
-                            title="Hapus satuan"
+                            className={`ml-2 flex-shrink-0 ${
+                              hasTransaction
+                                ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
+                                : "text-destructive hover:text-red-600 hover:bg-red-100"
+                            }`}
+                            title={hasTransaction ? "Satuan memiliki transaksi" : "Hapus satuan"}
                           >
-                            <Trash size={18} />
+                            {hasTransaction ? <Lock size={18} /> : <Trash size={18} />}
                           </Button>
                         )}
                       </div>
@@ -441,6 +464,15 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                       {unit.is_base && (
                         <div className="mb-3 inline-block bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide">
                           Satuan Terkecil
+                        </div>
+                      )}
+
+                      {hasTransaction && (
+                        <div className="mb-3 flex items-center gap-1">
+                          <Lock size={12} className="text-amber-600" />
+                          <span className="inline-block bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded text-xs font-semibold">
+                            Ada Transaksi
+                          </span>
                         </div>
                       )}
 
@@ -454,13 +486,15 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                               type="number"
                               value={unit.relativeConversion}
                               onChange={(e) => handleUnitChange(index, "relativeConversion", Math.max(1, parseInt(e.target.value) || 1))}
-                              className={`w-16 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white ${isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 ? "border-red-400" : "border-gray-300"}`}
+                              disabled={isConvLocked}
+                              className={`w-16 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary ${isConvLocked ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white"} ${isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 ? "border-red-400" : "border-gray-300"}`}
                               min="1"
                             />
                             <select
                               value={unit.referenceUnitId}
                               onChange={(e) => handleUnitChange(index, "referenceUnitId", e.target.value)}
-                              className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white ${isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId ? "border-red-400" : "border-gray-300"}`}
+                              disabled={isConvLocked}
+                              className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary ${isConvLocked ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white"} ${isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId ? "border-red-400" : "border-gray-300"}`}
                             >
                               <option value="">Pilih satuan acuan</option>
                               {availableRefs.map(ref => (
@@ -699,6 +733,25 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
           </Button>
         )}
       </div>
+
+      <AlertDialog
+        open={deleteBlockedUnit !== null}
+        onOpenChange={() => setDeleteBlockedUnit(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Satuan Tidak Bisa Dihapus</AlertDialogTitle>
+            <AlertDialogDescription>
+              Satuan <strong>{deleteBlockedUnit}</strong> tidak bisa dihapus karena sudah memiliki transaksi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end pt-2">
+            <AlertDialogAction onClick={() => setDeleteBlockedUnit(null)}>
+              Mengerti
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

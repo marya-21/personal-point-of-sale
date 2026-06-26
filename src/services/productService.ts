@@ -232,6 +232,19 @@ export async function fetchProductDetail(productId: string) {
 }
 
 
+/**
+ * Fetch unit IDs yang sudah memiliki transaksi untuk locking
+ */
+export async function fetchLockedUnitIds(unitIds: string[]): Promise<Set<string>> {
+  if (unitIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from("transaction_items")
+    .select("unit_id")
+    .in("unit_id", unitIds);
+  if (error) throw error;
+  return new Set((data ?? []).map((row: any) => row.unit_id));
+}
+
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
 

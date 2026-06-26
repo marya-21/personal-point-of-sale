@@ -11,6 +11,7 @@ import {
   useRestockProduct,
   fetchProductsList,
   fetchProductDetail,
+  fetchLockedUnitIds,
 } from "@/services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "@/components/inventory/ProductForm";
@@ -246,6 +247,7 @@ function Inventory() {
   const [restockingProduct, setRestockingProduct] = useState<(ProductV2 & { id: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [lockedUnitIds, setLockedUnitIds] = useState<Set<string>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { user } = useAuth();
@@ -275,6 +277,9 @@ function Inventory() {
   const handleEdit = async (productId: string) => {
     try {
       const detail = await fetchProductDetail(productId);
+      const unitIds = (detail.product_units ?? []).map((u: any) => u.id);
+      const locked = await fetchLockedUnitIds(unitIds);
+      setLockedUnitIds(locked);
       setEditingProduct(detail as any);
       setShowModal(true);
     } catch (error) {
@@ -290,6 +295,7 @@ function Inventory() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    setLockedUnitIds(new Set());
     createMutation.reset();
     updateMutation.reset();
   };
@@ -342,7 +348,9 @@ function Inventory() {
           .filter((u: any) => u.id && !u.id.startsWith('temp-'))
           .map((u: any) => u.id)
       );
-      const unitsToDelete = originalUnits.filter((u: any) => !currentIds.has(u.id));
+      const unitsToDelete = originalUnits.filter(
+        (u: any) => !currentIds.has(u.id) && !lockedUnitIds.has(u.id)
+      );
 
       updateMutation.mutate(
         {
@@ -583,6 +591,7 @@ function Inventory() {
           </DialogHeader>
           <ProductForm
             initialData={editingProduct ?? undefined}
+            lockedUnitIds={lockedUnitIds}
             onSubmit={handleSubmit}
             isPending={isPending}
             onCancel={handleCloseModal}
