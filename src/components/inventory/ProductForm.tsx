@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form"
+import { z } from "zod";
 import { Trash, ChevronRight, ChevronLeft } from "lucide-react";
 import { formatNumber, } from "@/utils/formatCurrency";
 import { Input } from "@/ui/input";
@@ -48,6 +49,22 @@ interface ProductFormProps {
   canEditPrice?: boolean;
 }
 
+const required_field_str = "Wajib di isi"
+
+const formProductSchema = z.object({
+  name: z.string().min(1, required_field_str),
+  unit: z.object({
+    name: z.string().min(1, "Nama satuan wajib diisi"),
+    price: z.coerce.number().min(1, "Harga jual wajib diisi dan minimal 1"),
+    referenceUnitId: z.string(),
+    barcode: z.string().optional(),
+  }).optional(),
+  stock: z.coerce.number().min(1, "Stok awal minimal 1").optional(),
+  price_cost: z.coerce.number().min(0).optional(),
+});
+
+type TFormProductSchema = z.infer<typeof formProductSchema>;
+
 const toTitleCase = (str: string) =>
   str.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 
@@ -56,13 +73,11 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
   const isEditMode = !!initialData;
   const [step, setStep] = useState<1 | 2>(1);
 
-  const { control, handleSubmit, watch, trigger } = useForm<any>({
-    defaultValues: initialData ? initialData : {
-      barcode: "",
-      name: "",
-      price_cost: 0,
-      price_sell: 0,
-      stock: 0,
+  const { control, handleSubmit, watch, trigger } = useForm<TFormProductSchema>({
+    defaultValues: {
+      name: initialData?.name || "",
+      stock: isEditMode ? 0 : undefined,
+      price_cost: isEditMode ? undefined : 0,
     },
   });
 
@@ -93,6 +108,20 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
     ];
   });
 
+  // Track touched fields per unit to show validation errors only after user interaction
+  const [touchedUnitFields, setTouchedUnitFields] = useState<Record<string, Set<string>>>({});
+
+  const markFieldTouched = (unitId: string, fieldName: string) => {
+    setTouchedUnitFields(prev => ({
+      ...prev,
+      [unitId]: new Set([...(prev[unitId] || new Set()), fieldName])
+    }));
+  };
+
+  const isFieldTouched = (unitId: string, fieldName: string) => {
+    return touchedUnitFields[unitId]?.has(fieldName) ?? false;
+  };
+
   const [stockUnitId, setStockUnitId] = useState<string>("temp-1");
 
   const stock_qty = Number(watch("stock")) || 0;
@@ -104,8 +133,10 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
 
   const handleUnitChange = (index: number, field: keyof UnitRow, value: any) => {
     const newUnits = [...units];
+    const unitId = newUnits[index].id;
     newUnits[index] = { ...newUnits[index], [field]: value };
     setUnits(newUnits);
+    markFieldTouched(unitId, field);
     setUnitErrors("");
   };
 
@@ -141,6 +172,13 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
         );
 
       setUnits(updatedUnits);
+
+      // Clear touched state for removed unit
+      setTouchedUnitFields(prev => {
+        const newState = { ...prev };
+        delete newState[removedUnit.id];
+        return newState;
+      });
 
       // Reset stockUnitId if removed unit was selected
       if (removedUnit.id === stockUnitId) {
@@ -224,7 +262,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
 
       const baseUnitName = toTitleCase(baseUnit.name || "");
       onSubmit({
-        p_name: data.name,
+        p_name: toTitleCase(data.name),
         p_total_harga_beli: null,
         p_qty_input: 0,
         p_stock_unit_name: baseUnitName,
@@ -251,7 +289,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       }));
 
       onSubmit({
-        p_name: data.name,
+        p_name: productName,
         p_total_harga_beli: canEditPrice && total_purchase_cost > 0 ? total_purchase_cost : null,
         p_qty_input: stock_qty,
         p_stock_unit_name: selectedUnitName,
@@ -266,17 +304,14 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
       {!isEditMode && (
         <div className="mb-6 pb-4 border-b border-gray-200">
           <div className="flex items-center justify-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-colors ${
-              step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-colors ${step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
               1
             </div>
-            <div className={`flex-1 h-1 transition-colors ${
-              step >= 2 ? 'bg-primary' : 'bg-gray-200'
-            }`}></div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-colors ${
-              step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600'
-            }`}>
+            <div className={`flex-1 h-1 transition-colors ${step >= 2 ? 'bg-primary' : 'bg-gray-200'
+              }`}></div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-colors ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
               2
             </div>
           </div>
@@ -300,7 +335,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                   {...field}
                   label="Nama Produk"
                   required
-                  placeholder="Cnt: 8991234567890"
+                  placeholder="Cnt: Aqua 600ml"
                 />
                 {fieldState.error && (
                   <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
@@ -366,116 +401,121 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                   const availableRefs = units.slice(0, index);
                   const absoluteConv = computeAbsolute(unit.id, units);
                   const baseUnit = units.find(u => u.is_base) || units[0];
-                  const hasError = rowErrors[unit.id];
 
-                return (
-                  <div
-                    key={unit.id}
-                    className={`border rounded-lg p-4 transition-colors ${
-                      hasError
-                        ? "border-red-400 bg-red-50"
-                        : "border-gray-300 bg-gray-50"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          value={unit.name}
-                          onChange={(e) => handleUnitChange(index, "name", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                          placeholder={unit.is_base ? "PCS/Btg/Ons" : "Box, Pack, Lusin"}
-                        />
-                      </div>
-                      {!unit.is_base && (
-                        <Button
-                          type="button"
-                          onClick={() => handleRemoveUnit(index)}
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-red-600 hover:bg-red-100 ml-2 flex-shrink-0"
-                          title="Hapus satuan"
-                        >
-                          <Trash size={18} />
-                        </Button>
-                      )}
-                    </div>
-
-                    {unit.is_base && (
-                      <div className="mb-3 inline-block bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide">
-                        Satuan Terkecil
-                      </div>
-                    )}
-
-                    {!unit.is_base && (
-                      <div className="mb-3 space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span>1</span>
-                          <span className="font-medium">{unit.name || "satuan ini"}</span>
-                          <span>berisi</span>
-                          <input
-                            type="number"
-                            value={unit.relativeConversion}
-                            onChange={(e) => handleUnitChange(index, "relativeConversion", Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                            min="1"
+                  return (
+                    <div
+                      key={unit.id}
+                      className="border border-gray-300 bg-gray-50 rounded-lg p-4 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <Input
+                            label="Nama Satuan"
+                            value={unit.name}
+                            onChange={(e) => handleUnitChange(index, "name", e.target.value)}
+                            required
+                            placeholder={unit.is_base ? "Cnt: Pcs/Btg/Ons" : "Cnt: Box, Pack, Lusin"}
+                            className={isFieldTouched(unit.id, "name") && !unit.name.trim() ? "border-red-400" : ""}
                           />
-                          <select
-                            value={unit.referenceUnitId}
-                            onChange={(e) => handleUnitChange(index, "referenceUnitId", e.target.value)}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                          {isFieldTouched(unit.id, "name") && !unit.name.trim() && (
+                            <p className="text-xs text-red-600 mt-1">Nama satuan tidak boleh kosong</p>
+                          )}
+                          {isFieldTouched(unit.id, "name") && unit.name.trim() && rowErrors[unit.id]?.includes("sudah digunakan") && (
+                            <p className="text-xs text-red-600 mt-1">Nama satuan sudah digunakan</p>
+                          )}
+                        </div>
+                        {!unit.is_base && (
+                          <Button
+                            type="button"
+                            onClick={() => handleRemoveUnit(index)}
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-red-600 hover:bg-red-100 ml-2 flex-shrink-0"
+                            title="Hapus satuan"
                           >
-                            <option value="">Pilih satuan acuan</option>
-                            {availableRefs.map(ref => (
-                              <option key={ref.id} value={ref.id}>
-                                {ref.name || "(belum diberi nama)"}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="text-sm text-gray-600 italic">
-                          = {absoluteConv} {baseUnit.name || "satuan terkecil"} (dihitung otomatis)
-                        </div>
+                            <Trash size={18} />
+                          </Button>
+                        )}
                       </div>
-                    )}
 
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Harga Jual</label>
-                        <div className="flex items-center">
-                          <span className="text-gray-600 mr-2">Rp</span>
+                      {unit.is_base && (
+                        <div className="mb-3 inline-block bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-semibold uppercase tracking-wide">
+                          Satuan Terkecil
+                        </div>
+                      )}
+
+                      {!unit.is_base && (
+                        <div className="mb-3 space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span>1</span>
+                            <span className="font-medium">{unit.name || "satuan ini"}</span>
+                            <span>berisi</span>
+                            <input
+                              type="number"
+                              value={unit.relativeConversion}
+                              onChange={(e) => handleUnitChange(index, "relativeConversion", Math.max(1, parseInt(e.target.value) || 1))}
+                              className={`w-16 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white ${isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 ? "border-red-400" : "border-gray-300"}`}
+                              min="1"
+                            />
+                            <select
+                              value={unit.referenceUnitId}
+                              onChange={(e) => handleUnitChange(index, "referenceUnitId", e.target.value)}
+                              className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white ${isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId ? "border-red-400" : "border-gray-300"}`}
+                            >
+                              <option value="">Pilih satuan acuan</option>
+                              {availableRefs.map(ref => (
+                                <option key={ref.id} value={ref.id}>
+                                  {ref.name || "(belum diberi nama)"}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 && (
+                            <p className="text-xs text-red-600">Isi harus ≥ 1</p>
+                          )}
+                          {isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId && (
+                            <p className="text-xs text-red-600">Harus pilih satuan acuan</p>
+                          )}
+                          <div className="text-sm text-gray-600 italic">
+                            = {absoluteConv} {baseUnit.name || "satuan terkecil"} (dihitung otomatis)
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Harga Jual *</label>
+                          <div className={`flex items-center border rounded ${isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0 ? "border-red-400 bg-red-50" : "border-gray-300 bg-white"}`}>
+                            <span className="text-gray-600 mr-2 ml-2">Rp</span>
+                            <input
+                              type="text"
+                              value={formatNumber(unit.price_sell)}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, "");
+                                handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
+                              }}
+                              className="flex-1 px-2 py-2 text-sm text-right focus:outline-none bg-transparent"
+                              inputMode="numeric"
+                              placeholder="0"
+                            />
+                          </div>
+                          {isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0 && (
+                            <p className="text-xs text-red-600 mt-1">Harga jual harus lebih dari 0</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Barcode (opsional)</label>
                           <input
                             type="text"
-                            value={formatNumber(unit.price_sell)}
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/[^0-9]/g, "");
-                              handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
-                            }}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                            inputMode="numeric"
-                            placeholder="0"
+                            value={unit.barcode}
+                            onChange={(e) => handleUnitChange(index, "barcode", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                            placeholder="8991234567890"
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Barcode (opsional)</label>
-                        <input
-                          type="text"
-                          value={unit.barcode}
-                          onChange={(e) => handleUnitChange(index, "barcode", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                          placeholder="8991234567890"
-                        />
-                      </div>
                     </div>
-
-                    {hasError && (
-                      <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-700">
-                        {hasError}
-                      </div>
-                    )}
-                  </div>
-                );
+                  );
                 });
               })()}
             </div>
@@ -500,7 +540,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                 <Controller
                   name="stock"
                   control={control}
-                  rules={{ required: true, min: { value: 0, message: "Stok tidak boleh negatif" } }}
+                  rules={{ required: "Stok awal wajib diisi", min: { value: 1, message: "Stok minimal 1" } }}
                   render={({ field, fieldState }) => (
                     <>
                       <Input
@@ -511,6 +551,7 @@ function ProductForm({ initialData, onCancel, onSubmit, isPending, canEditPrice 
                         required
                         min={1}
                         placeholder="Contoh: 100"
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       />
                       {fieldState.error && (
                         <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
