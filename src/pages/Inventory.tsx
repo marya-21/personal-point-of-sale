@@ -12,6 +12,7 @@ import {
   fetchProductsList,
   fetchProductDetail,
   fetchLockedUnitIds,
+  useProduct,
 } from "@/services/productService";
 import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "@/components/inventory/ProductForm";
@@ -19,6 +20,7 @@ import RestockForm from "@/components/inventory/RestockForm";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,6 +246,7 @@ function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowS
 function Inventory() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductV2 | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [restockingProduct, setRestockingProduct] = useState<(ProductV2 & { id: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
@@ -274,27 +277,51 @@ function Inventory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleEdit = async (productId: string) => {
-    try {
-      const detail = await fetchProductDetail(productId);
-      const unitIds = (detail.product_units ?? []).map((u: any) => u.id);
-      const locked = await fetchLockedUnitIds(unitIds);
-      setLockedUnitIds(locked);
-      setEditingProduct(detail as any);
-      setShowModal(true);
-    } catch (error) {
-      toast.error("Gagal memuat detail produk");
+  const {
+    data: editingProductDetail,
+    isLoading: isEditingProductLoading,
+    isError: isEditingProductError,
+  } = useProduct(selectedProductId);
+
+  const lockedProductUnitIdsQuery = useQuery({
+    queryKey: ["locked-unit-ids", selectedProductId],
+    queryFn: async () => {
+      const unitIds = (editingProductDetail?.product_units ?? []).map((u: any) => u.id);
+      return fetchLockedUnitIds(unitIds);
+    },
+    enabled: !!editingProductDetail?.product_units?.length,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (editingProductDetail) {
+      setEditingProduct(editingProductDetail as any);
     }
+  }, [editingProductDetail]);
+
+  useEffect(() => {
+    if (lockedProductUnitIdsQuery.data) {
+      setLockedUnitIds(lockedProductUnitIdsQuery.data);
+    }
+  }, [lockedProductUnitIdsQuery.data]);
+
+  const handleEdit = (productId: string) => {
+    setEditingProduct(null);
+    setLockedUnitIds(new Set());
+    setSelectedProductId(productId);
+    setShowModal(true);
   };
 
   const handleAdd = () => {
     setEditingProduct(null);
+    setSelectedProductId(null);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    setSelectedProductId(null);
     setLockedUnitIds(new Set());
     createMutation.reset();
     updateMutation.reset();
@@ -586,17 +613,50 @@ function Inventory() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
+              {selectedProductId ? "Edit Produk" : "Tambah Produk Baru"}
             </DialogTitle>
           </DialogHeader>
-          <ProductForm
-            initialData={editingProduct ?? undefined}
-            lockedUnitIds={lockedUnitIds}
-            onSubmit={handleSubmit}
-            isPending={isPending}
-            onCancel={handleCloseModal}
-            canEditPrice={canEditPrice}
-          />
+          {selectedProductId ? (
+            isEditingProductLoading ? (
+              <div className="space-y-4 py-4">
+                <Skeleton className="h-6 w-1/2" />
+                <div className="grid gap-4">
+                  <Skeleton className="h-14 rounded-xl" />
+                  <Skeleton className="h-56 rounded-xl" />
+                </div>
+                <div className="flex gap-3">
+                  <Skeleton className="h-11 flex-1 rounded-full" />
+                  <Skeleton className="h-11 flex-1 rounded-full" />
+                </div>
+              </div>
+            ) : isEditingProductError ? (
+              <div className="space-y-3 py-6 text-center">
+                <p className="text-sm text-red-600">Gagal memuat detail produk.</p>
+                <Button variant="secondary" onClick={handleCloseModal}>
+                  Tutup
+                </Button>
+              </div>
+            ) : (
+              <ProductForm
+                key={editingProduct?.id ?? "edit-product"}
+                initialData={editingProduct ?? undefined}
+                lockedUnitIds={lockedUnitIds}
+                onSubmit={handleSubmit}
+                isPending={isPending}
+                onCancel={handleCloseModal}
+                canEditPrice={canEditPrice}
+              />
+            )
+          ) : (
+            <ProductForm
+              initialData={undefined}
+              lockedUnitIds={lockedUnitIds}
+              onSubmit={handleSubmit}
+              isPending={isPending}
+              onCancel={handleCloseModal}
+              canEditPrice={canEditPrice}
+            />
+          )}
           {isError && <p className="text-sm text-red-600 mt-2">{errorMessage}</p>}
         </DialogContent>
       </Dialog>

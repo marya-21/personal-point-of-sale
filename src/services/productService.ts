@@ -50,25 +50,8 @@ export const useProduct = (productId: string | null) => {
   return useQuery({
     queryKey: ["product", productId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", productId)
-        .single();
-
-      if (error) throw error;
-
-      return {
-        ...data,
-        margin_rp: (data.price_sell || 0) - (data.price_cost || 0),
-        margin_percent:
-          data.price_sell > 0
-            ? (
-                ((data.price_sell - (data.price_cost || 0)) / data.price_sell) *
-                100
-              ).toFixed(2)
-            : 0,
-      };
+      if (!productId) throw new Error("Product id is required");
+      return fetchProductDetail(productId);
     },
     enabled: !!productId,
   });
