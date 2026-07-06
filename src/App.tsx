@@ -40,17 +40,17 @@ function NavBar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-6 h-14 flex items-center gap-6 shadow-sm">
-      <span className="font-bold text-gray-900 mr-4">POS App</span>
+    <nav className="fixed top-0 left-0 right-0 z-30 bg-n-0 border-b border-n-200 px-6 h-14 flex items-center gap-6 shadow-sm">
+      <span className="font-bold text-n-900 mr-4">POS App</span>
 
       {hasPermission("create_transaction") && (
         <NavLink
           to="/cashier"
           className={({ isActive }) =>
-            `text-sm font-medium pb-1 border-b-2 transition-colors ${
+            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
               isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-900"
+                ? "border-accent-600 text-accent-600"
+                : "border-transparent text-n-400 hover:text-n-800"
             }`
           }
         >
@@ -62,10 +62,10 @@ function NavBar() {
         <NavLink
           to="/inventory"
           className={({ isActive }) =>
-            `text-sm font-medium pb-1 border-b-2 transition-colors ${
+            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
               isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-900"
+                ? "border-accent-600 text-accent-600"
+                : "border-transparent text-n-400 hover:text-n-800"
             }`
           }
         >
@@ -78,10 +78,10 @@ function NavBar() {
         <NavLink
           to="/riwayat"
           className={({ isActive }) =>
-            `text-sm font-medium pb-1 border-b-2 transition-colors ${
+            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
               isActive
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-900"
+                ? "border-accent-600 text-accent-600"
+                : "border-transparent text-n-400 hover:text-n-800"
             }`
           }
         >
@@ -90,15 +90,15 @@ function NavBar() {
       )}
 
       <div className="ml-auto flex items-center gap-3">
-        <span className="text-sm text-gray-700 font-medium">
+        <span className="text-sm text-n-700 font-medium">
           {user?.full_name}
         </span>
-        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full capitalize">
+        <span className="text-xs bg-accent-100 text-accent-700 px-2 py-0.5 rounded-full capitalize font-semibold">
           {user?.role?.name}
         </span>
         <button
           onClick={handleLogout}
-          className="text-sm text-gray-500 hover:text-red-600 transition-colors ml-1"
+          className="text-sm text-n-400 hover:text-danger transition-colors ml-1 font-medium"
         >
           Keluar
         </button>

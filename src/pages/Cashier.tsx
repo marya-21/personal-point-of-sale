@@ -76,10 +76,10 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
           <DialogTitle>Pembayaran</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+          <div className="bg-n-50 rounded-lg p-4 space-y-3 border border-n-200">
             <div className="flex justify-between">
-              <span className="text-gray-600">Total Belanja</span>
-              <span className="font-bold text-lg">{formatRupiah(total)}</span>
+              <span className="text-caption font-semibold text-n-500">Total Belanja</span>
+              <span className="text-display font-extrabold font-mono">{formatRupiah(total)}</span>
             </div>
           </div>
 
@@ -95,15 +95,13 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
 
           {cashAmount && (
             <div
-              className={`rounded-lg p-3 ${isValid ? "bg-green-50" : "bg-red-50"}`}
+              className={`rounded-lg p-3 border ${isValid ? "bg-success-bg border-success-bd" : "bg-danger-bg border-danger-bd"}`}
             >
               <div className="flex justify-between">
-                <span className={isValid ? "text-green-700" : "text-red-700"}>
+                <span className={`text-caption ${isValid ? "text-success" : "text-danger"}`}>
                   Kembalian
                 </span>
-                <span
-                  className={`font-bold ${isValid ? "text-green-700" : "text-red-700"}`}
-                >
+                <span className={`text-body font-bold font-mono ${isValid ? "text-success" : "text-danger"}`}>
                   {isValid ? formatRupiah(change) : "Uang kurang!"}
                 </span>
               </div>
@@ -111,7 +109,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
           )}
 
           {checkoutMutation.isError && (
-            <p className="text-sm text-red-600">
+            <p className="text-body text-danger">
               {checkoutMutation.error?.message ||
                 "Gagal memproses transaksi. Coba lagi."}
             </p>
@@ -148,9 +146,9 @@ function SuccessModal({ isOpen, data, onClose }: any) {
           <DialogTitle>Transaksi Berhasil</DialogTitle>
         </DialogHeader>
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 bg-success-bg border border-success-bd rounded-full flex items-center justify-center mx-auto">
             <svg
-              className="w-8 h-8 text-green-600"
+              className="w-8 h-8 text-success"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -165,30 +163,30 @@ function SuccessModal({ isOpen, data, onClose }: any) {
           </div>
 
           {data && (
-            <div className="space-y-3 bg-gray-50 rounded-lg p-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Total Penjualan</span>
-                <span className="font-semibold">
+            <div className="space-y-3 bg-n-50 rounded-lg p-4 border border-n-200">
+              <div className="flex justify-between text-caption">
+                <span className="text-n-500">Total Penjualan</span>
+                <span className="text-body font-semibold font-mono">
                   {formatRupiah(data.total_price)}
                 </span>
               </div>
               {isAdmin && (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Modal</span>
-                    <span className="font-semibold">
+                  <div className="flex justify-between text-caption">
+                    <span className="text-n-500">Total Modal</span>
+                    <span className="text-body font-semibold font-mono">
                       {formatRupiah(data.total_cost)}
                     </span>
                   </div>
-                  <div className="border-t border-gray-200 pt-3 flex justify-between">
-                    <span className="text-sm font-semibold text-green-700">
+                  <div className="border-t border-n-200 pt-3 flex justify-between">
+                    <span className="text-caption text-success">
                       Margin
                     </span>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">
+                      <p className="text-display text-success font-mono">
                         {formatRupiah(data.total_margin)}
                       </p>
-                      <p className="text-xs text-green-600">
+                      <p className="text-caption text-success/80">
                         {data.margin_percent}%
                       </p>
                     </div>
@@ -199,8 +197,8 @@ function SuccessModal({ isOpen, data, onClose }: any) {
           )}
 
           <div>
-            <p className="text-gray-600 text-sm">Kembalian</p>
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-caption font-semibold text-n-500">Kembalian</p>
+            <p className="text-display font-extrabold text-success font-mono">
               {data ? formatRupiah(data.change_amount) : ""}
             </p>
           </div>
@@ -224,11 +222,10 @@ function Cashier() {
   const { getTotal, addItem } = useCartStore();
   const isAdmin = usePermission("view_all_transactions");
 
-  // Use service hook untuk products
   const { data: products = [], isLoading, isError } = useProducts();
 
   const filtered =
-    products?.filter((p) =>
+    products?.filter((p: ProductV2) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()),
     ) ?? [];
 
@@ -247,14 +244,12 @@ function Cashier() {
     setSuccessData(data);
   };
 
-  // console.log(isAdmin, 'isAdmin')
-
   const ProductNotFoundMessage = () =>
     isAdmin ? (
       <div className="flex flex-col items-center mt-8 space-y-3">
         <p className="text-center">
-          <span className="font-medium">Produk tidak ditemukan</span> <br />
-          <span className="text-gray-400 text-sm">klik tombol dibawah untuk menambah produk baru</span>
+          <span className="font-medium text-n-800">Produk tidak ditemukan</span> <br />
+          <span className="text-n-400 text-sm">klik tombol dibawah untuk menambah produk baru</span>
         </p>
         <Button
           variant="primary"
@@ -266,17 +261,17 @@ function Cashier() {
       </div>
     ) : (
       <p className="text-center">
-        <span className="font-medium">Produk tidak ditemukan</span> <br />
-        <span className="text-gray-400 text-sm">hubungi admin untuk menambah produk yang anda cari</span>
-      </p >
+        <span className="font-medium text-n-800">Produk tidak ditemukan</span> <br />
+        <span className="text-n-400 text-sm">hubungi admin untuk menambah produk yang anda cari</span>
+      </p>
     );
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-n-50">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Memuat katalog produk...</p>
+          <div className="w-8 h-8 border-4 border-accent-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-n-400 text-sm">Memuat katalog produk...</p>
         </div>
       </div>
     );
@@ -284,10 +279,10 @@ function Cashier() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center text-red-500">
+      <div className="flex items-center justify-center h-screen bg-n-50">
+        <div className="text-center text-danger">
           <p className="font-semibold">Gagal memuat produk</p>
-          <p className="text-sm mt-1">
+          <p className="text-sm mt-1 text-n-500">
             Periksa koneksi internet dan refresh halaman
           </p>
         </div>
@@ -296,17 +291,17 @@ function Cashier() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-n-100">
       <ScannerListener onNotFound={handleNotFound} onStockError={handleStockError} />
 
-      {/* Notifications */}
+      {/* Toast notifications */}
       {notFoundBarcode && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg text-sm">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-danger text-n-0 px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
           Barcode <strong>{notFoundBarcode}</strong> tidak ditemukan
         </div>
       )}
       {stockError && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg text-sm">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-warning text-n-0 px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
           {stockError}
         </div>
       )}
@@ -314,7 +309,7 @@ function Cashier() {
       {/* Left Panel: Product Search */}
       <div className="flex-1 flex flex-col p-6 min-w-0">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Kasir POS</h1>
+          <h1 className="text-2xl font-bold text-n-900">Kasir POS</h1>
         </div>
 
         <Input
@@ -331,15 +326,15 @@ function Cashier() {
             filtered.map((product: ProductV2) => (
               <div
                 key={product.id}
-                className="flex flex-col bg-white rounded-lg px-4 py-3 shadow-sm"
+                className="flex flex-col bg-n-0 rounded-lg px-4 py-3 shadow-sm border border-n-200"
               >
                 <div className="mb-3">
-                  <p className="font-medium text-gray-900 truncate">
+                  <p className="font-semibold text-n-900 truncate">
                     {product.name}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm">
                     <span
-                      className={`${product.stock === 0 ? "text-destructive" : "text-foreground"}`}
+                      className={`font-medium ${product.stock === 0 ? "text-danger" : "text-n-500"}`}
                     >
                       Stok: {product.stock}
                     </span>
@@ -360,7 +355,7 @@ function Cashier() {
                       title="Tambah ke keranjang"
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      {unit.name} - {formatRupiah(unit.price_sell)}
+                      {unit.name} — <span className="font-mono">{formatRupiah(unit.price_sell)}</span>
                     </Button>
                   ))}
                 </div>
@@ -371,8 +366,8 @@ function Cashier() {
       </div>
 
       {/* Right Panel: Cart */}
-      <div className="w-96 bg-white shadow-lg flex flex-col p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="w-96 bg-n-0 border-l border-n-200 flex flex-col p-6">
+        <h2 className="text-lg font-semibold text-n-900 mb-4">
           Keranjang Belanja
         </h2>
         <div className="flex-1 overflow-hidden">

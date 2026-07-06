@@ -266,6 +266,7 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
   };
 
   const handleFormSubmit = handleSubmit((data) => {
+    const productName = toTitleCase(data.name);
     if (isEditMode) {
       // Edit mode: submit with minimal data
       const unitsPayload = units.map(u => ({
@@ -279,7 +280,7 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
 
       const baseUnitName = toTitleCase(baseUnit.name || "");
       onSubmit({
-        p_name: toTitleCase(data.name),
+        p_name: productName,
         p_total_harga_beli: null,
         p_qty_input: 0,
         p_stock_unit_name: baseUnitName,
@@ -449,11 +450,10 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                             onClick={() => handleRemoveUnit(index)}
                             variant="ghost"
                             size="icon"
-                            className={`ml-2 flex-shrink-0 ${
-                              hasTransaction
-                                ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
-                                : "text-destructive hover:text-red-600 hover:bg-red-100"
-                            }`}
+                            className={`ml-2 flex-shrink-0 ${hasTransaction
+                              ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
+                              : "text-destructive hover:text-red-600 hover:bg-red-100"
+                              }`}
                             title={hasTransaction ? "Satuan memiliki transaksi" : "Hapus satuan"}
                           >
                             {hasTransaction ? <Lock size={18} /> : <Trash size={18} />}

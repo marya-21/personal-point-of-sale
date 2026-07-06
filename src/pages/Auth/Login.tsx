@@ -33,15 +33,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="bg-card border border-border p-8 rounded-lg shadow-lg w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-n-100">
+      <div className="bg-n-0 border border-n-200 p-8 rounded-xl shadow-lg w-full max-w-sm">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">POS App</h1>
-          <p className="text-sm text-muted-foreground mt-2">Masuk ke sistem kasir</p>
+          <h1 className="text-3xl font-bold text-n-900">POS App</h1>
+          <p className="text-sm text-n-400 mt-2">Masuk ke sistem kasir</p>
         </div>
 
         {error && (
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-md mb-4 text-sm">
+          <div className="bg-danger-bg border border-danger-bd text-danger px-4 py-3 rounded-lg mb-4 text-sm font-medium">
             {error}
           </div>
         )}
