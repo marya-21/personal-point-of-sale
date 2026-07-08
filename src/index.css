@@ -161,8 +161,6 @@ body {
 }
 
 /* Typography System — Design System AMAN POS v1.0 */
-/* Base classes define SIZE & LINE-HEIGHT only — font-weight controlled by Tailwind utilities */
-/* This allows easy override: <p className="text-body font-extrabold"> will work */
 
 .text-display {
   font-size: 40px;

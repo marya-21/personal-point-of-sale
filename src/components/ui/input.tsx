@@ -14,9 +14,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "flex h-9 w-full rounded-md border border-n-200 bg-n-0 px-3 py-1 text-caption font-medium text-n-900 shadow-sm transition-colors",
+          "flex h-9 w-full rounded-md border border-n-200 bg-n-0 px-3 py-1 text-caption font-medium text-n-900 transition-colors",
           "placeholder:text-n-400",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-600/30 focus-visible:border-accent-600",
+          "focus-visible:outline-none focus-visible:ring-accent-600/30 focus-visible:border-accent-600",
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-n-50",
           className
         )}
@@ -27,8 +27,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
     if (label) {
       return (
-        <div className="space-y-1.5">
-          <label className="text-caption font-medium text-n-800">
+        <div className="flex flex-col gap-2">
+          <label className="text-caption font-semibold text-n-700">
             {label}
           </label>
           {inputElement}

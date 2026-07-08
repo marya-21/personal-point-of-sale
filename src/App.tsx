@@ -16,6 +16,7 @@ import Cashier from "./pages/Cashier";
 import Inventory from "./pages/Inventory";
 import TransactionHistory from "./pages/TransactionHistory";
 import Login from "./pages/Auth/Login";
+import { Badge } from "./components/ui/badge";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,10 +48,9 @@ function NavBar() {
         <NavLink
           to="/cashier"
           className={({ isActive }) =>
-            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
-              isActive
-                ? "border-accent-600 text-accent-600"
-                : "border-transparent text-n-400 hover:text-n-800"
+            `text-sm font-semibold pb-1 border-b-2 transition-colors ${isActive
+              ? "border-accent-600 text-accent-600"
+              : "border-transparent text-n-400 hover:text-n-800"
             }`
           }
         >
@@ -62,10 +62,9 @@ function NavBar() {
         <NavLink
           to="/inventory"
           className={({ isActive }) =>
-            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
-              isActive
-                ? "border-accent-600 text-accent-600"
-                : "border-transparent text-n-400 hover:text-n-800"
+            `text-sm font-semibold pb-1 border-b-2 transition-colors ${isActive
+              ? "border-accent-600 text-accent-600"
+              : "border-transparent text-n-400 hover:text-n-800"
             }`
           }
         >
@@ -75,30 +74,29 @@ function NavBar() {
 
       {(hasPermission("view_all_transactions") ||
         hasPermission("view_own_transactions")) && (
-        <NavLink
-          to="/riwayat"
-          className={({ isActive }) =>
-            `text-sm font-semibold pb-1 border-b-2 transition-colors ${
-              isActive
+          <NavLink
+            to="/riwayat"
+            className={({ isActive }) =>
+              `text-sm font-semibold pb-1 border-b-2 transition-colors ${isActive
                 ? "border-accent-600 text-accent-600"
                 : "border-transparent text-n-400 hover:text-n-800"
-            }`
-          }
-        >
-          Riwayat
-        </NavLink>
-      )}
+              }`
+            }
+          >
+            Riwayat
+          </NavLink>
+        )}
 
       <div className="ml-auto flex items-center gap-3">
         <span className="text-sm text-n-700 font-medium">
           {user?.full_name}
         </span>
-        <span className="text-xs bg-accent-100 text-accent-700 px-2 py-0.5 rounded-full capitalize font-semibold">
+        <Badge>
           {user?.role?.name}
-        </span>
+        </Badge>
         <button
           onClick={handleLogout}
-          className="text-sm text-n-400 hover:text-danger transition-colors ml-1 font-medium"
+          className="text-sm text-n-400 hover:text-danger transition-colors ml-1 font-medium cursor-pointer"
         >
           Keluar
         </button>

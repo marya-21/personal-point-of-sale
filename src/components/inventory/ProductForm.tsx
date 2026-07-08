@@ -727,9 +727,10 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
             type="submit"
             variant="primary"
             className="flex-1"
-            disabled={isPending || unitErrors !== ""}
+            disabled={unitErrors !== ""}
+            isLoading={isPending}
           >
-            {isPending ? "Menyimpan..." : "Simpan"}
+            Simpan
           </Button>
         )}
       </div>

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/table";
 import { useAuth, usePermission } from "@/hooks/useAuth";
 import { Product, ProductV2 } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 type TopSellingItem = {
   name: string;
@@ -79,7 +80,7 @@ function TopSellingPanel({ items }: { items: TopSellingItem[] }) {
   return (
     <>
       <div className="bg-n-0 rounded-xl shadow-sm p-4 border border-n-200">
-        <h2 className="text-subtitle text-n-800 mb-3">Barang Terlaris</h2>
+        <h2 className="text-subtitle text-n-800 font-semibold mb-3">Barang Terlaris</h2>
         {items.length === 0 ? (
           <p className="text-body text-n-400 py-2">
             Belum ada data transaksi.
@@ -152,22 +153,17 @@ function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowS
       <div className="bg-n-0 rounded-xl shadow-sm p-4 border border-n-200">
         <h2 className="font-semibold text-n-800 mb-3">Stok</h2>
         {combined.length === 0 ? (
-          <p className="text-sm text-n-400 py-2">Semua stok aman.</p>
+          <p className="text-sm text-n-400 py-2">Semua stok aman</p>
         ) : (
           <ul className="space-y-2">
             {preview.map((item) => (
               <li key={item.id} className="flex items-center gap-2">
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${item._status === "habis" ? "bg-danger" : "bg-warning"}`}
-                />
                 <span className="text-sm text-n-800 flex-1 truncate">
                   {item.name}
                 </span>
-                <span
-                  className={`text-xs font-semibold ${item._status === "habis" ? "text-danger" : "text-warning"}`}
-                >
+                <Badge variant={item._status === "habis" ? "destructive" : "warning"}>
                   {item.stock === 0 ? "Habis" : `Sisa ${item.stock}`}
-                </span>
+                </Badge>
               </li>
             ))}
           </ul>

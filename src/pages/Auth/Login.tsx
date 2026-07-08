@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/ui/button';
+import { Input } from '@/ui/input';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -33,13 +33,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-n-100">
-      <div className="bg-n-0 border border-n-200 p-8 rounded-xl shadow-lg w-full max-w-sm">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-n-900">POS App</h1>
-          <p className="text-sm text-n-400 mt-2">Masuk ke sistem kasir</p>
-        </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="bg-background border border-n-300 p-8 rounded-xl w-full max-w-sm">
+        <h1 className="text-center mb-6 text-title font-bold text-n-950">POS App</h1>
         {error && (
           <div className="bg-danger-bg border border-danger-bd text-danger px-4 py-3 rounded-lg mb-4 text-sm font-medium">
             {error}
@@ -56,7 +52,6 @@ export default function Login() {
             required
             autoFocus
           />
-
           <Input
             label="Password"
             type="password"
@@ -65,14 +60,13 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-
           <Button
             type="submit"
             variant="primary"
             className="w-full mt-2"
-            disabled={loading}
+            isLoading={loading}
           >
-            {loading ? 'Masuk...' : 'Masuk'}
+            Masuk
           </Button>
         </form>
       </div>
