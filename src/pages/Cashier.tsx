@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { ButtonGroup } from "@/ui/button-group";
 import { Input } from "@/ui/input";
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/ui/card";
+import { Badge } from "@/ui/badge";
 import { usePermission } from "@/hooks/useAuth";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Package, Layers, Barcode } from "lucide-react";
 import { ProductV2 } from "@/types";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
@@ -77,10 +79,7 @@ function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-n-50 rounded-lg p-4 space-y-3 border border-n-200">
-            <div className="flex justify-between">
-              <span className="text-caption font-semibold text-n-500">Total Belanja</span>
-              <span className="text-display font-extrabold font-mono">{formatRupiah(total)}</span>
-            </div>
+            <span className="text-display font-extrabold font-mono">{formatRupiah(total)}</span>
           </div>
 
           <Input
@@ -197,8 +196,8 @@ function SuccessModal({ isOpen, data, onClose }: any) {
           )}
 
           <div>
-            <p className="text-caption font-semibold text-n-500">Kembalian</p>
-            <p className="text-display font-extrabold text-success font-mono">
+            <p className="text-caption contents mt-5 font-semibold text-n-500">Kembalian</p>
+            <p className="text-display font-extrabold text-success">
               {data ? formatRupiah(data.change_amount) : ""}
             </p>
           </div>
@@ -218,11 +217,24 @@ function Cashier() {
   const [notFoundBarcode, setNotFoundBarcode] = useState("");
   const [stockError, setStockError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUnitIds, setSelectedUnitIds] = useState<Record<string, string>>({});
   const navigate = useNavigate();
-  const { getTotal, addItem } = useCartStore();
+  const { getTotal, addItem, items } = useCartStore();
   const isAdmin = usePermission("view_all_transactions");
 
   const { data: products = [], isLoading, isError } = useProducts();
+
+  const badgeVariant = (stock: number) => {
+    if (stock === 0) return "destructive";
+    if (stock <= 5) return "warning";
+    return "success";
+  }
+
+  const stockStatusText = (stock: number) => {
+    if (stock === 0) return "Habis";
+    if (stock <= 5) return "Sisa";
+    return "Stok";
+  }
 
   const filtered =
     products?.filter((p: ProductV2) =>
@@ -243,6 +255,7 @@ function Cashier() {
     setShowCheckout(false);
     setSuccessData(data);
   };
+
 
   const ProductNotFoundMessage = () =>
     isAdmin ? (
@@ -319,61 +332,129 @@ function Cashier() {
           autoFocus
         />
 
-        <div className="flex-1 overflow-y-auto mt-3 space-y-2">
+
+        <div className="flex-1 overflow-y-auto mt-6">
           {filtered.length === 0 ? (
             <ProductNotFoundMessage />
           ) : (
-            filtered.map((product: ProductV2) => (
-              <div
-                key={product.id}
-                className="flex flex-col bg-n-0 rounded-lg px-4 py-3 shadow-sm border border-n-200"
-              >
-                <div className="mb-3">
-                  <p className="font-semibold text-n-900 truncate">
-                    {product.name}
-                  </p>
-                  <p className="text-sm">
-                    <span
-                      className={`font-medium ${product.stock === 0 ? "text-danger" : "text-n-500"}`}
-                    >
-                      Stok: {product.stock}
-                    </span>
-                  </p>
-                </div>
+            <div className="grid grid-cols-3 gap-4">
+              {filtered.map((product: ProductV2) => {
+                const selectedUnit =
+                  product.product_units.find(
+                    (unit) => unit.id === selectedUnitIds[product.id],
+                  ) ?? product.product_units[0];
 
-                <div className="flex flex-wrap gap-2">
-                  {product?.product_units?.map((unit) => (
-                    <Button
-                      key={unit.id}
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        const err = addItem(product, unit)
-                        if (err) handleStockError(err)
-                      }}
-                      disabled={product.stock === 0}
-                      title="Tambah ke keranjang"
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      {unit.name} — <span className="font-mono">{formatRupiah(unit.price_sell)}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+                return (
+                  <Card
+                    key={product.id}
+                    className={`flex flex-col overflow-hidden hover:shadow-md transition-shadow ${product.stock === 0 ? "cursor-not-allowed opacity-50" : ""}`}
+                  >
+                    <div className="flex-1 p-4 flex flex-col gap-4">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-body font-semibold text-n-900 line-clamp-2 mb-1 truncate">
+                            {product.name}
+                          </p>
+                          <Badge variant={badgeVariant(product.stock)}>
+                            {stockStatusText(product.stock)} {product.stock > 99 ? "99+" : product.stock}
+                          </Badge>
+                        </div>
+
+                        {/* <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-caption font-semibold text-n-500">
+                            SKU {product.sku || "N/A"}
+                          </p>
+                      </div> */}
+                      </div>
+
+                      <div className="grid gap-3">
+                        <div>
+                          <p className="text-caption font-semibold uppercase tracking-[0.15em] text-n-500 mb-2">
+                            Pilih Satuan
+                          </p>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            {product.product_units.map((unit) => {
+                              const isActive = unit.id === selectedUnit?.id;
+                              return (
+                                <button
+                                  key={unit.id}
+                                  type="button"
+                                  onClick={() => setSelectedUnitIds((prev) => ({ ...prev, [product.id]: unit.id }))}
+                                  className={`rounded-sm cursor-pointer border px-3 py-2 text-xs font-semibold transition ${isActive ? "border-n-100 bg-n-100" : "border-n-200 bg-n-0 text-n-700 hover:bg-n-50"}`}
+                                >
+                                  {unit.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border border-n-200 bg-n-50 p-4">
+                          <p className="text-display font-extrabold text-n-900">
+                            {selectedUnit ? formatRupiah(selectedUnit.price_sell) : "-"}
+                          </p>
+
+                          <div className="mt-4 flex flex-wrap gap-2 text-xs text-n-500">
+                            {selectedUnit && (
+                              <Badge variant="outline" >
+                                <Layers size={10} className="mr-1" />
+                                Isi {selectedUnit.conversion} {product.product_units[0]?.name || "Pcs"}
+                              </Badge>
+                            )}
+                            {selectedUnit?.barcode && (
+                              <Badge variant="outline" >
+                                <Barcode size={10} className="mr-1" />
+                                {selectedUnit.barcode}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          className="w-full text-xs"
+                          disabled={product.stock === 0}
+                          onClick={() => {
+                            if (!selectedUnit) return;
+                            const err = addItem(product, selectedUnit);
+                            if (err) handleStockError(err);
+                          }}
+                        >
+                          <ShoppingCart className="w-3 h-3" />
+                          Tambah
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )
+          }
+        </div >
+      </div >
 
       {/* Right Panel: Cart */}
-      <div className="w-96 bg-n-0 border-l border-n-200 flex flex-col p-6">
-        <h2 className="text-lg font-semibold text-n-900 mb-4">
-          Keranjang Belanja
-        </h2>
+      < div className="w-96 bg-n-0 border-l border-n-200 flex flex-col p-6" >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-body font-semibold text-n-900">
+            Keranjang
+          </h2>
+          {items.length > 0 && (
+            <Badge variant="info">
+              {items.length} item
+            </Badge>
+          )}
+        </div>
+
         <div className="flex-1 overflow-hidden">
           <Cart onCheckout={() => setShowCheckout(true)} />
         </div>
-      </div>
+      </div >
 
       <CheckoutModal
         isOpen={showCheckout}
@@ -387,7 +468,7 @@ function Cashier() {
         data={successData}
         onClose={() => setSuccessData(null)}
       />
-    </div>
+    </div >
   );
 }
 

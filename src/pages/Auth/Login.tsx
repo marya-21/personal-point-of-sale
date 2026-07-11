@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/ui/button';
@@ -9,14 +10,15 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (isAuthenticated) {
     return <Navigate to="/cashier" replace />;
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -51,15 +53,28 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoFocus
+            autoComplete="username"
           />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Input
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute bottom-0 right-3 top-[40%] flex items-center justify-center text-n-400 hover:text-n-600 cursor-pointer"
+              aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           <Button
             type="submit"
             variant="primary"
