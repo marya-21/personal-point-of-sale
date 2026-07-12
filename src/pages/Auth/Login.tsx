@@ -1,90 +1,152 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/ui/button';
-import { Input } from '@/ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
+import { InputGroup, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email harus diisi')
+    .email('Format email tidak valid'),
+  password: z
+    .string()
+    .min(1, 'Password harus diisi')
+    .min(6, 'Password minimal 6 karakter'),
+});
+
+type LoginFormInputs = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<LoginFormInputs>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onBlur',
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
   if (isAuthenticated) {
     return <Navigate to="/cashier" replace />;
   }
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const result = await login(email, password);
+  const onSubmit = async (data: LoginFormInputs) => {
+    setApiError(null);
+    const result = await login(data.email, data.password);
 
     if (result.success) {
       navigate('/cashier');
     } else {
-      setError(result.error || 'Login gagal');
+      setApiError(result.error || 'Login gagal');
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="bg-background border border-n-300 p-8 rounded-xl w-full max-w-sm">
-        <h1 className="text-center mb-6 text-title font-bold text-n-950">POS App</h1>
-        {error && (
-          <div className="bg-danger-bg border border-danger-bd text-danger px-4 py-3 rounded-lg mb-4 text-sm font-medium">
-            {error}
-          </div>
-        )}
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-2xl">POS App</CardTitle>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="email@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-            autoComplete="username"
-          />
-          <div className="relative">
-            <Input
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
-              autoComplete="current-password"
+        <CardContent>
+          {apiError && (
+            <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-6 text-sm font-medium">
+              {apiError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <Controller
+              name="email"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field orientation="vertical" data-invalid={!!fieldState.error}>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@example.com"
+                      autoComplete="username"
+                      spellCheck="false"
+                      autoCorrect="off"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      error={!!fieldState.error}
+                    />
+                    {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                  </FieldContent>
+                </Field>
+              )}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute bottom-0 right-3 top-[40%] flex items-center justify-center text-n-400 hover:text-n-600 cursor-pointer"
-              aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+
+            <Controller
+              name="password"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Field orientation="vertical" data-invalid={!!fieldState.error}>
+                  <FieldLabel htmlFor='password'>Password</FieldLabel>
+                  <FieldContent>
+                    <InputGroup error={!!fieldState.error}>
+                      <InputGroupInput
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className="pr-3 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        error={!!fieldState.error}
+                      />
+                      <InputGroupButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                        className="cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </InputGroupButton>
+                    </InputGroup>
+                    {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                  </FieldContent>
+                </Field>
+              )}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full mt-2"
-            isLoading={loading}
-          >
-            Masuk
-          </Button>
-        </form>
-      </div>
+              {isSubmitting ? 'Memproses...' : 'Masuk'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

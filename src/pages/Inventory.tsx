@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { SquarePen, Trash, PackagePlus } from "lucide-react";
+import { SquarePen, Trash, PackagePlus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/services/supabase";
 import {
@@ -41,6 +41,7 @@ import {
 import { useAuth, usePermission } from "@/hooks/useAuth";
 import { Product, ProductV2 } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { InputGroup, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
 type TopSellingItem = {
   name: string;
@@ -480,12 +481,21 @@ function Inventory() {
           {/* Left: product table */}
           <div className="flex-1 min-w-0">
             <div className="mb-4">
-              <Input
-                placeholder="Cari nama produk atau barcode..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-sm"
-              />
+              <InputGroup>
+                <InputGroupButton >
+                  <Search />
+                </InputGroupButton>
+                <InputGroupInput
+                  id="password"
+                  type='text'
+                  placeholder="Cari atau scan produk"
+                  autoComplete="current-password"
+                  className="w-full max-w-sm pr-3 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  autoFocus
+                />
+              </InputGroup>
             </div>
 
             <div className="bg-n-0 rounded-xl shadow-sm overflow-hidden border border-n-200">

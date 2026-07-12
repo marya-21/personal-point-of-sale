@@ -13,8 +13,10 @@ import { Input } from "@/ui/input";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/ui/card";
 import { Badge } from "@/ui/badge";
 import { usePermission } from "@/hooks/useAuth";
-import { ShoppingCart, Package, Layers, Barcode } from "lucide-react";
+import { ShoppingCart, Package, Layers, Barcode, Search } from "lucide-react";
 import { ProductV2 } from "@/types";
+import { toast } from "sonner";
+import { InputGroup, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
   const [cashAmount, setCashAmount] = useState("");
@@ -214,8 +216,6 @@ function SuccessModal({ isOpen, data, onClose }: any) {
 function Cashier() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [successData, setSuccessData] = useState(null);
-  const [notFoundBarcode, setNotFoundBarcode] = useState("");
-  const [stockError, setStockError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUnitIds, setSelectedUnitIds] = useState<Record<string, string>>({});
   const navigate = useNavigate();
@@ -240,16 +240,6 @@ function Cashier() {
     products?.filter((p: ProductV2) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()),
     ) ?? [];
-
-  const handleNotFound = (barcode: string) => {
-    setNotFoundBarcode(barcode);
-    setTimeout(() => setNotFoundBarcode(""), 3000);
-  };
-
-  const handleStockError = (msg: string) => {
-    setStockError(msg);
-    setTimeout(() => setStockError(""), 3000);
-  };
 
   const handleCheckoutSuccess = (data: any) => {
     setShowCheckout(false);
@@ -305,19 +295,7 @@ function Cashier() {
 
   return (
     <div className="flex h-screen bg-n-100">
-      <ScannerListener onNotFound={handleNotFound} onStockError={handleStockError} />
-
-      {/* Toast notifications */}
-      {notFoundBarcode && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-danger text-n-0 px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
-          Barcode <strong>{notFoundBarcode}</strong> tidak ditemukan
-        </div>
-      )}
-      {stockError && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-40 bg-warning text-n-0 px-6 py-3 rounded-lg shadow-lg text-sm font-medium">
-          {stockError}
-        </div>
-      )}
+      <ScannerListener />
 
       {/* Left Panel: Product Search */}
       <div className="flex-1 flex flex-col p-6 min-w-0">
@@ -325,12 +303,21 @@ function Cashier() {
           <h1 className="text-2xl font-bold text-n-900">Kasir POS</h1>
         </div>
 
-        <Input
-          placeholder="Cari nama produk..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          autoFocus
-        />
+        <InputGroup>
+          <InputGroupButton >
+            <Search />
+          </InputGroupButton>
+          <InputGroupInput
+            id="password"
+            type='text'
+            placeholder="Cari atau scan produk"
+            autoComplete="current-password"
+            className="pr-3 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+        </InputGroup>
 
 
         <div className="flex-1 overflow-y-auto mt-6">
@@ -421,7 +408,7 @@ function Cashier() {
                           onClick={() => {
                             if (!selectedUnit) return;
                             const err = addItem(product, selectedUnit);
-                            if (err) handleStockError(err);
+                            if (err) toast.warning(err);
                           }}
                         >
                           <ShoppingCart className="w-3 h-3" />

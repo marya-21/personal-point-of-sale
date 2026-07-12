@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { Product } from '../../types'
 import useBarcodeScanner from '../../hooks/useBarcodeScanner'
 import useCartStore from '../../store/useCartStore'
+import { toast } from 'sonner'
 
-function ScannerListener({ onNotFound, onStockError }) {
+function ScannerListener() {
   const queryClient = useQueryClient()
   const { addItem } = useCartStore()
 
@@ -26,12 +27,12 @@ function ScannerListener({ onNotFound, onStockError }) {
 
       if (foundProduct && foundUnit) {
         const err = addItem(foundProduct, foundUnit)
-        if (err) onStockError?.(err)
+        if (err) toast.warning(err)
       } else {
-        onNotFound?.(barcode)
+        toast.error(`Barcode ${barcode} tidak ditemukan`)
       }
     },
-    [queryClient, addItem, onNotFound, onStockError]
+    [queryClient, addItem]
   )
 
   useBarcodeScanner(handleScan)
