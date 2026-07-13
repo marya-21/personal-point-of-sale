@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { SquarePen, Trash, PackagePlus, Search } from "lucide-react";
+import { SquarePen, Trash, PackagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/services/supabase";
 import {
@@ -18,7 +18,6 @@ import { formatRupiah } from "../utils/formatCurrency";
 import ProductForm from "@/components/inventory/ProductForm";
 import RestockForm from "@/components/inventory/RestockForm";
 import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,7 +40,7 @@ import {
 import { useAuth, usePermission } from "@/hooks/useAuth";
 import { Product, ProductV2 } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { InputGroup, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import SearchProduct from "@/components/pos/SearchProduct";
 
 type TopSellingItem = {
   name: string;
@@ -80,11 +79,11 @@ function TopSellingPanel({ items }: { items: TopSellingItem[] }) {
 
   return (
     <>
-      <div className="bg-n-0 rounded-xl shadow-sm p-4 border border-n-200">
+      <div className="bg-n-0 rounded-md shadow-sm p-4 border border-border">
         <h2 className="text-subtitle text-n-800 font-semibold mb-3">Barang Terlaris</h2>
         {items.length === 0 ? (
           <p className="text-body text-n-400 py-2">
-            Belum ada data transaksi.
+            Belum ada transaksi
           </p>
         ) : (
           <ol className="space-y-2">
@@ -151,7 +150,7 @@ function StockAlertPanel({ outOfStock, lowStock }: { outOfStock: Product[]; lowS
 
   return (
     <>
-      <div className="bg-n-0 rounded-xl shadow-sm p-4 border border-n-200">
+      <div className="bg-n-0 rounded-md shadow-sm p-4 border border-border">
         <h2 className="font-semibold text-n-800 mb-3">Stok</h2>
         {combined.length === 0 ? (
           <p className="text-sm text-n-400 py-2">Semua stok aman</p>
@@ -464,8 +463,8 @@ function Inventory() {
     createMutation.error?.message || updateMutation.error?.message;
 
   return (
-    <div className="min-h-screen bg-n-100 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="height-screen bg-n-100 p-8">
+      <div className="mx-auto">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-title font-bold text-n-900">
@@ -481,24 +480,13 @@ function Inventory() {
           {/* Left: product table */}
           <div className="flex-1 min-w-0">
             <div className="mb-4">
-              <InputGroup>
-                <InputGroupButton >
-                  <Search />
-                </InputGroupButton>
-                <InputGroupInput
-                  id="password"
-                  type='text'
-                  placeholder="Cari atau scan produk"
-                  autoComplete="current-password"
-                  className="w-full max-w-sm pr-3 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  autoFocus
-                />
-              </InputGroup>
+              <SearchProduct
+                searchValue={search}
+                setSearchQuery={setSearch}
+              />
             </div>
 
-            <div className="bg-n-0 rounded-xl shadow-sm overflow-hidden border border-n-200">
+            <div className="bg-n-0 rounded-md overflow-hidden border border-border">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="w-6 h-6 border-4 border-accent-600 border-t-transparent rounded-full animate-spin" />

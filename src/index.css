@@ -187,6 +187,10 @@ body {
   line-height: 1.2;
 }
 
+.height-screen {
+  height: calc(100vh - 3.5rem); /* Adjust for header height */
+}
+
 .dash-underline-tooltip {
   text-decoration: underline;
   text-decoration-style: dashed;

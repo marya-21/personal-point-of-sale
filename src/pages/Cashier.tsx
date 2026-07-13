@@ -10,13 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Button } from "@/ui/button";
 import { ButtonGroup } from "@/ui/button-group";
 import { Input } from "@/ui/input";
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/ui/card";
+import { Card } from "@/ui/card";
 import { Badge } from "@/ui/badge";
 import { usePermission } from "@/hooks/useAuth";
-import { ShoppingCart, Package, Layers, Barcode, Search } from "lucide-react";
+import { ShoppingCart, Layers, Barcode, } from "lucide-react";
 import { ProductV2 } from "@/types";
+import SearchProduct from "@/components/pos/SearchProduct";
 import { toast } from "sonner";
-import { InputGroup, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+
 
 function CheckoutModal({ isOpen, onClose, total, onSuccess }: any) {
   const [cashAmount, setCashAmount] = useState("");
@@ -294,32 +295,18 @@ function Cashier() {
   }
 
   return (
-    <div className="flex h-screen bg-n-100">
+    <div className="flex height-screen bg-n-100">
       <ScannerListener />
 
       {/* Left Panel: Product Search */}
-      <div className="flex-1 flex flex-col p-6 min-w-0">
+      <div className="flex-1 flex flex-col p-8 min-w-0">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-n-900">Kasir POS</h1>
+          <h1 className="text-title font-bold text-n-900">Kasir POS</h1>
         </div>
-
-        <InputGroup>
-          <InputGroupButton >
-            <Search />
-          </InputGroupButton>
-          <InputGroupInput
-            id="password"
-            type='text'
-            placeholder="Cari atau scan produk"
-            autoComplete="current-password"
-            className="pr-3 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-textfield-decoration-container]:hidden"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoFocus
-          />
-        </InputGroup>
-
-
+        <SearchProduct
+          searchValue={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
         <div className="flex-1 overflow-y-auto mt-6">
           {filtered.length === 0 ? (
             <ProductNotFoundMessage />
