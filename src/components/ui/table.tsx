@@ -9,7 +9,7 @@ const Table = React.forwardRef<
   <div className="w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-body", className)}
       {...props}
     />
   </div>
@@ -20,7 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("border-b border-gray-200 bg-gray-50", className)} {...props} />
+  <thead ref={ref} className={cn("border-b-2 border-n-200 bg-n-50", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -28,7 +28,7 @@ const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={cn("[&_tr:last-child]:border-0 divide-y divide-gray-100", className)} {...props} />
+  <tbody ref={ref} className={cn("[&_tr:last-child]:border-0 divide-y divide-n-100", className)} {...props} />
 ))
 TableBody.displayName = "TableBody"
 
@@ -39,7 +39,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-gray-200 bg-gray-50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-n-200 bg-n-50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -54,7 +54,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-gray-100 transition-colors hover:bg-gray-50 data-[state=selected]:bg-gray-100",
+      "border-b border-n-100 transition-colors hover:bg-n-50 data-[state=selected]:bg-n-100",
       className
     )}
     {...props}
@@ -69,7 +69,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-semibold text-gray-500 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-11 px-4 text-left align-middle text-caption text-n-500 uppercase tracking-wide [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}

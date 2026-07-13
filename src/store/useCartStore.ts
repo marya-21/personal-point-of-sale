@@ -29,7 +29,7 @@ const useCartStore = create<CartStore>((set, get) => ({
     if (existing) {
       const requiredBaseQty = totalBaseQtyInCart + unit.conversion
       if (requiredBaseQty > product.stock) {
-        return `Stok ${product.name} tidak cukup (sisa ${remaining} ${baseName})`
+        return `Stok tidak cukup (sisa ${remaining} ${baseName})`
       }
       set({
         items: items.map((item) =>
@@ -41,11 +41,11 @@ const useCartStore = create<CartStore>((set, get) => ({
       return null
     } else {
       if (product.stock <= 0) {
-        return `Stok ${product.name} habis`
+        return `Stok habis`
       }
       const requiredBaseQty = totalBaseQtyInCart + unit.conversion
       if (requiredBaseQty > product.stock) {
-        return `Stok ${product.name} tidak cukup (sisa ${remaining} ${baseName})`
+        return `Stok tidak cukup (sisa ${remaining} ${baseName})`
       }
       set({
         items: [
