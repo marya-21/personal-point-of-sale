@@ -139,7 +139,7 @@ function TransactionHistory() {
     totalRevenue > 0 ? ((totalMargin / totalRevenue) * 100).toFixed(2) : 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="height-screen bg-n-100 p-8">
       <h1 className="text-title font-bold text-n-900 mb-6">
         {isAdmin ? "Riwayat Transaksi" : "Transaksi Saya"}
       </h1>
@@ -180,13 +180,13 @@ function TransactionHistory() {
         <div className="grid grid-cols-4 gap-3 mb-6">
           <div className="bg-n-0 rounded-xl border border-n-200 px-4 py-3">
             <p className="text-caption font-semibold text-n-400">Jumlah Transaksi</p>
-            <p className="text-display font-extrabold text-n-900 mt-1 font-mono">
+            <p className="text-display font-extrabold text-n-900 mt-1">
               {transactions?.length ?? 0}
             </p>
           </div>
           <div className="bg-n-0 rounded-xl border border-n-200 px-4 py-3">
             <p className="text-caption font-semibold text-n-400">Omzet Penjualan</p>
-            <p className="text-display font-extrabold text-accent-600 mt-1 font-mono">
+            <p className="text-display font-extrabold text-accent-600 mt-1">
               {formatRupiah(totalRevenue)}
             </p>
           </div>
@@ -195,7 +195,7 @@ function TransactionHistory() {
             <>
               <div className="bg-n-0 rounded-xl border border-n-200 px-4 py-3">
                 <p className="text-caption font-semibold text-n-400">Modal Produk</p>
-                <p className="text-display font-extrabold text-n-800 mt-1 font-mono">
+                <p className="text-display font-extrabold text-n-800 mt-1">
                   {formatRupiah(totalCost)}
                 </p>
               </div>
@@ -203,7 +203,7 @@ function TransactionHistory() {
                 <p className="text-caption font-semibold text-success dash-underline-tooltip">
                   Keuntungan
                 </p>
-                <p className="text-display font-extrabold text-success mt-1 font-mono">
+                <p className="text-display font-extrabold text-success mt-1">
                   {formatRupiah(totalMargin)}
                 </p>
                 <p className="text-caption font-semibold text-success/70 mt-1">

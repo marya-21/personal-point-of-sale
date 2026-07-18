@@ -5,6 +5,7 @@ import { Trash, ChevronRight, ChevronLeft, Lock } from "lucide-react";
 import { formatNumber, } from "@/utils/formatCurrency";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
+import { InputGroup, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ProductV2, ProductUnit } from "@/types";
+import { Field, FieldContent, FieldError, FieldLabel } from "@/ui/field";
 
 // Local UI-only extended unit type
 interface UnitRow extends ProductUnit {
@@ -346,20 +348,24 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
           <Controller
             name="name"
             control={control}
-            rules={{ required: "Nama produk wajib diisi" }}
-            render={({ field, fieldState }) =>
-              <>
-                <Input
-                  {...field}
-                  label="Nama Produk"
-                  required
-                  placeholder="Cnt: Aqua 600ml"
-                />
-                {fieldState.error && (
-                  <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
-                )}
-              </>
-            }
+            render={({ field, fieldState }) => (
+              <Field orientation="vertical" data-invalid={!!fieldState.error}>
+                <FieldLabel htmlFor="name">Nama Produk</FieldLabel>
+                <FieldContent>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Cnt: Aqua 600ml"
+                    autoComplete="product-name"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    name={field.name}
+                    error={!!fieldState.error}
+                  />
+                  {fieldState.error && <FieldError errors={[fieldState.error]} />}
+                </FieldContent>
+              </Field>
+            )}
           />
           {/* Units Cards */}
           <div className="mt-6">
@@ -427,22 +433,35 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                       key={unit.id}
                       className="border border-gray-300 bg-gray-50 rounded-lg p-4 transition-colors"
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 gap-2">
                         <div className="flex-1">
-                          <Input
-                            label="Nama Satuan"
-                            value={unit.name}
-                            onChange={(e) => handleUnitChange(index, "name", e.target.value)}
-                            required
-                            placeholder={unit.is_base ? "Cnt: Pcs/Btg/Ons" : "Cnt: Box, Pack, Lusin"}
-                            className={isFieldTouched(unit.id, "name") && !unit.name.trim() ? "border-red-400" : ""}
-                          />
-                          {isFieldTouched(unit.id, "name") && !unit.name.trim() && (
-                            <p className="text-xs text-red-600 mt-1">Nama satuan tidak boleh kosong</p>
-                          )}
-                          {isFieldTouched(unit.id, "name") && unit.name.trim() && rowErrors[unit.id]?.includes("sudah digunakan") && (
-                            <p className="text-xs text-red-600 mt-1">Nama satuan sudah digunakan</p>
-                          )}
+                          {(() => {
+                            const hasError = isFieldTouched(unit.id, "name") && (!unit.name.trim() || rowErrors[unit.id]?.includes("sudah digunakan"));
+                            const isDanger = isFieldTouched(unit.id, "name") && !unit.name.trim();
+                            const isWarning = isFieldTouched(unit.id, "name") && unit.name.trim() && rowErrors[unit.id]?.includes("sudah digunakan");
+                            const errorMessage = isDanger ? "Nama satuan tidak boleh kosong" : isWarning ? "Nama satuan sudah digunakan" : "";
+
+                            return (
+                              <Field orientation="vertical" data-invalid={hasError} className={hasError ? (isDanger ? "data-invalid:border-error" : "data-invalid:border-warning") : ""}>
+                                <FieldLabel htmlFor={`name-${unit.id}`}>Nama Satuan</FieldLabel>
+                                <FieldContent>
+                                  <Input
+                                    id={`name-${unit.id}`}
+                                    value={unit.name}
+                                    onChange={(e) => handleUnitChange(index, "name", e.target.value)}
+                                    required
+                                    placeholder={unit.is_base ? "Cnt: Pcs/Btg/Ons" : "Cnt: Box, Pack, Lusin"}
+                                    error={hasError}
+                                  />
+                                  {hasError && (
+                                    <FieldError
+                                      errors={[{ message: errorMessage }]}
+                                    />
+                                  )}
+                                </FieldContent>
+                              </Field>
+                            );
+                          })()}
                         </div>
                         {!unit.is_base && (
                           <Button
@@ -450,9 +469,9 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                             onClick={() => handleRemoveUnit(index)}
                             variant="ghost"
                             size="icon"
-                            className={`ml-2 flex-shrink-0 ${hasTransaction
-                              ? "text-amber-500 hover:text-amber-600 hover:bg-amber-100"
-                              : "text-destructive hover:text-red-600 hover:bg-red-100"
+                            className={`rounded-full ${hasTransaction
+                              ? "hover:text-warning hover:bg-warning"
+                              : "hover:text-danger hover:bg-danger-bg"
                               }`}
                             title={hasTransaction ? "Satuan memiliki transaksi" : "Hapus satuan"}
                           >
@@ -469,8 +488,8 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
 
                       {hasTransaction && (
                         <div className="mb-3 flex items-center gap-1">
-                          <Lock size={12} className="text-amber-600" />
-                          <span className="inline-block bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded text-xs font-semibold">
+                          <Lock size={12} className="text-warning" />
+                          <span className="inline-block bg-warning/20 text-warning border border-warning/50 px-2 py-0.5 rounded text-xs font-semibold">
                             Ada Transaksi
                           </span>
                         </div>
@@ -482,19 +501,20 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                             <span>1</span>
                             <span className="font-medium">{unit.name || "satuan ini"}</span>
                             <span>berisi</span>
-                            <input
+                            <Input
                               type="number"
                               value={unit.relativeConversion}
                               onChange={(e) => handleUnitChange(index, "relativeConversion", Math.max(1, parseInt(e.target.value) || 1))}
                               disabled={isConvLocked}
-                              className={`w-16 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary ${isConvLocked ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white"} ${isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 ? "border-red-400" : "border-gray-300"}`}
+                              className="w-16"
+                              error={isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1}
                               min="1"
                             />
                             <select
                               value={unit.referenceUnitId}
                               onChange={(e) => handleUnitChange(index, "referenceUnitId", e.target.value)}
                               disabled={isConvLocked}
-                              className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary ${isConvLocked ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white"} ${isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId ? "border-red-400" : "border-gray-300"}`}
+                              className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary ${isConvLocked ? "bg-gray-100 cursor-not-allowed text-gray-500" : "bg-white"} ${isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId ? "border-error" : "border-gray-300"}`}
                             >
                               <option value="">Pilih satuan acuan</option>
                               {availableRefs.map(ref => (
@@ -505,10 +525,10 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                             </select>
                           </div>
                           {isFieldTouched(unit.id, "relativeConversion") && unit.relativeConversion < 1 && (
-                            <p className="text-xs text-red-600">Isi harus ≥ 1</p>
+                            <p className="text-xs text-error">Isi harus ≥ 1</p>
                           )}
                           {isFieldTouched(unit.id, "referenceUnitId") && !unit.referenceUnitId && (
-                            <p className="text-xs text-red-600">Harus pilih satuan acuan</p>
+                            <p className="text-xs text-error">Harus pilih satuan acuan</p>
                           )}
                           <div className="text-sm text-gray-600 italic">
                             = {absoluteConv} {baseUnit.name || "satuan terkecil"} (dihitung otomatis)
@@ -518,34 +538,45 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
 
                       <div className="grid grid-cols-2 gap-3 mt-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Harga Jual *</label>
-                          <div className={`flex items-center border rounded ${isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0 ? "border-red-400 bg-red-50" : "border-gray-300 bg-white"}`}>
-                            <span className="text-gray-600 mr-2 ml-2">Rp</span>
-                            <input
-                              type="text"
-                              value={formatNumber(unit.price_sell)}
-                              onChange={(e) => {
-                                const raw = e.target.value.replace(/[^0-9]/g, "");
-                                handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
-                              }}
-                              className="flex-1 px-2 py-2 text-sm text-right focus:outline-none bg-transparent"
-                              inputMode="numeric"
-                              placeholder="0"
-                            />
-                          </div>
-                          {isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0 && (
-                            <p className="text-xs text-red-600 mt-1">Harga jual harus lebih dari 0</p>
-                          )}
+                          <Field orientation="vertical" data-invalid={isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0}>
+                            <FieldLabel htmlFor={`price-${unit.id}`}>Harga Jual</FieldLabel>
+                            <FieldContent>
+                              <InputGroup error={isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0}>
+                                <InputGroupButton className="px-3">
+                                  Rp
+                                </InputGroupButton>
+                                <InputGroupInput
+                                  id={`price-${unit.id}`}
+                                  type="text"
+                                  value={formatNumber(unit.price_sell)}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                                    handleUnitChange(index, "price_sell", raw ? parseInt(raw) : 0);
+                                  }}
+                                  inputMode="numeric"
+                                  placeholder="0"
+                                  className="text-right"
+                                />
+                              </InputGroup>
+                              {isFieldTouched(unit.id, "price_sell") && unit.price_sell <= 0 && (
+                                <FieldError errors={[{ message: "Harga jual harus lebih dari 0" }]} />
+                              )}
+                            </FieldContent>
+                          </Field>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Barcode (opsional)</label>
-                          <input
-                            type="text"
-                            value={unit.barcode}
-                            onChange={(e) => handleUnitChange(index, "barcode", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary bg-white"
-                            placeholder="8991234567890"
-                          />
+                          <Field orientation="vertical">
+                            <FieldLabel htmlFor={`barcode-${unit.id}`}>Barcode (opsional)</FieldLabel>
+                            <FieldContent>
+                              <Input
+                                id={`barcode-${unit.id}`}
+                                type="text"
+                                value={unit.barcode}
+                                onChange={(e) => handleUnitChange(index, "barcode", e.target.value)}
+                                placeholder="8991234567890"
+                              />
+                            </FieldContent>
+                          </Field>
                         </div>
                       </div>
                     </div>
@@ -555,7 +586,7 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
             </div>
 
             {unitErrors && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-400 rounded text-sm text-red-700 font-medium flex items-start gap-2">
+              <div className="mt-4 p-3 bg-error/10 border border-error rounded text-sm text-error font-medium flex items-start gap-2">
                 <span className="text-lg leading-none">⚠</span>
                 <span>{unitErrors}</span>
               </div>
@@ -588,7 +619,7 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                         onChange={(e) => field.onChange(e.target.valueAsNumber)}
                       />
                       {fieldState.error && (
-                        <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
+                        <p className="text-xs text-error mt-1">{fieldState.error.message}</p>
                       )}
                     </>
                   )}
@@ -637,7 +668,7 @@ function ProductForm({ initialData, lockedUnitIds = new Set(), onCancel, onSubmi
                       }}
                     />
                     {fieldState.error && (
-                      <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
+                      <p className="text-xs text-error mt-1">{fieldState.error.message}</p>
                     )}
                   </>
                 }

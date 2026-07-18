@@ -414,16 +414,9 @@ function Cashier() {
 
       {/* Right Panel: Cart */}
       < div className="w-96 bg-n-0 border-l border-n-200 flex flex-col p-6" >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-body font-semibold text-n-900">
-            Keranjang
-          </h2>
-          {items.length > 0 && (
-            <Badge variant="info">
-              {items.length} item
-            </Badge>
-          )}
-        </div>
+        <h2 className="text-body font-semibold text-n-900">
+          Keranjang
+        </h2>
 
         <div className="flex-1 overflow-hidden">
           <Cart onCheckout={() => setShowCheckout(true)} />

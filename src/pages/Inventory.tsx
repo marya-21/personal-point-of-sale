@@ -603,7 +603,7 @@ function Inventory() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {selectedProductId ? "Edit Produk" : "Tambah Produk Baru"}
+              {selectedProductId ? "Edit Produk" : "Tambah produk Baru"}
             </DialogTitle>
           </DialogHeader>
           {selectedProductId ? (
@@ -654,7 +654,7 @@ function Inventory() {
       <Dialog open={restockingProduct !== null} onOpenChange={() => setRestockingProduct(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Restock: {restockingProduct?.name}</DialogTitle>
+            <DialogTitle>Restock Barang</DialogTitle>
           </DialogHeader>
           {restockingProduct && (
             <RestockForm

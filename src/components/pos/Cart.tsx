@@ -2,6 +2,7 @@ import { CircleMinus, CirclePlus, Trash } from 'lucide-react'
 import useCartStore from '@/store/useCartStore'
 import { formatRupiah } from '@/utils/formatCurrency'
 import { Button } from '@/ui/button'
+import { Badge } from '@/ui/badge'
 
 function CartItem({ item }: { item: any }) {
   const { decreaseQty, removeItem, increaseQty } = useCartStore()
@@ -72,8 +73,10 @@ function Cart({ onCheckout }: { onCheckout: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-n-100">
-        <span className="text-caption text-n-500">{items.length} item</span>
+      <div className="flex items-center justify-between my-2 pb-2 border-b border-border">
+        <Badge variant="info">
+          {items.length} item
+        </Badge>
         <button
           onClick={clearCart}
           className="text-caption text-n-500 hover:text-danger cursor-pointer"

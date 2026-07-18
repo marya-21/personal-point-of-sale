@@ -53,6 +53,9 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
   return (
     <form onSubmit={handleFormSubmit} className="space-y-4">
       <div>
+        <p className="text-subtitle font-semibold mb-4">
+          {product.name}
+        </p>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <Controller
@@ -68,7 +71,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
                     inputMode="numeric"
                     required
                     min={1}
-                    placeholder="Contoh: 10"
+                    placeholder="Cnt: 10"
                   />
                   {fieldState.error && (
                     <p className="text-xs text-red-600 mt-1">{fieldState.error.message}</p>
@@ -78,11 +81,11 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
             />
           </div>
           <div className="w-36">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+            <label className="block text-caption font-semibold text-n-700 mb-1">Unit</label>
             <select
               value={stockUnitId}
               onChange={(e) => setStockUnitId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="">Pilih Unit</option>
               {product.product_units.map((unit) => (
@@ -94,7 +97,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
           </div>
         </div>
         {selectedUnit && selectedUnit.id !== baseUnit.id && (
-          <p className="text-xs text-gray-600 mt-2">
+          <p className="text-xs text-n-600 mt-2">
             = {baseQtyPreview} {baseUnit.name} (satuan dasar)
           </p>
         )}
@@ -112,7 +115,7 @@ function RestockForm({ product, onCancel, onSubmit, isPending, canEditPrice }: R
                   type="text"
                   inputMode="numeric"
                   value={field.value ? formatNumber(field.value) : ""}
-                  placeholder="Contoh: 480.000"
+                  placeholder="Cnt: 480.000"
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9]/g, "");
                     field.onChange(raw ? parseInt(raw) : 0);
